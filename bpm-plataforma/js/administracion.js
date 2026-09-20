@@ -117,56 +117,139 @@ const administracion = (() => {
      SUPERVISOR · GRABACIONES
      ═══════════════════════════════════════════════════════════════ */
 
-  function abrirGrabaciones() {
-    const agentes = servicio.usuarios.filter((u) => u.rol === 'agente');
+  let grabaciones = [];
+
+  async function abrirGrabaciones() {
+    await buscarGrabaciones();
+    llenarAgentes();
+  }
+
+  /* El desplegable se arma con los agentes que aparecen en las propias
+     grabaciones. Antes se pedía la lista de usuarios, pero eso requiere
+     permiso de administración y el supervisor no lo tiene: el filtro le
+     quedaba vacío. */
+  function llenarAgentes() {
+    const vistos = new Map();
+    grabaciones.forEach((g) => {
+      if (g.extension && !vistos.has(g.extension)) {
+        vistos.set(g.extension, g.agente && g.agente !== '—'
+          ? g.agente : 'Extensión ' + g.extension);
+      }
+    });
+
+    const actual = $$('grabAgente').value;
     $$('grabAgente').innerHTML = '<option value="">Todos</option>' +
-      agentes.map((a) => `<option>${a.nombre}</option>`).join('');
-    buscarGrabaciones();
+      [...vistos.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([ext, nom]) => `<option value="${ext}">${nom}</option>`).join('');
+
+    if (actual) $$('grabAgente').value = actual;   // no se pierde el filtro
   }
 
-  function buscarGrabaciones() {
-    const agente = $$('grabAgente').value;
-    const numero = $$('grabNumero').value.trim();
+  async function buscarGrabaciones() {
+    $$('tablaGrabaciones').innerHTML = '<div class="vacio">Buscando…</div>';
+    $$('reproductor').style.display = 'none';
 
-    const lista = GRABACIONES.filter((g) =>
-      (!agente || g.agente === agente) &&
-      (!numero || g.numero.includes(numero)));
+    const r = await servicio.listarGrabaciones({
+      desde: $$('grabDesde').value,
+      hasta: $$('grabHasta').value,
+      extension: $$('grabAgente').value,
+      numero: $$('grabNumero').value.trim(),
+    });
 
-    $$('grabN').textContent = lista.length;
+    if (r.error) {
+      $$('tablaGrabaciones').innerHTML =
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${r.error}</div></div>`;
+      $$('grabN').textContent = '0';
+      return;
+    }
 
-    $$('tablaGrabaciones').innerHTML = !lista.length
-      ? '<div class="vacio">Ninguna grabación coincide con el filtro.</div>'
-      : `<table class="tb">
-        <tr><th>Fecha</th><th>Agente</th><th>Número</th><th>Campaña</th><th>Duración</th><th>Tipificación</th><th></th></tr>
-        ${lista.map((g) => `<tr>
-          <td class="mono">${g.fecha}</td>
-          <td>${g.agente}</td>
-          <td class="mono">${g.numero}</td>
-          <td>${g.camp}</td>
-          <td class="mono">${duracion(g.seg)}</td>
-          <td>${g.tip}</td>
-          <td><button class="b b-teal b-sm" data-grab="${g.id}">Escuchar</button></td>
-        </tr>`).join('')}</table>`;
+    grabaciones = r.grabaciones || [];
+    $$('grabN').textContent = r.total ?? grabaciones.length;
+
+    if (!grabaciones.length) {
+      $$('tablaGrabaciones').innerHTML = r.aviso
+        ? `<div class="vacio">${r.aviso}</div>`
+        : '<div class="vacio">Ninguna grabación coincide con el filtro.</div>';
+      return;
+    }
+
+    $$('tablaGrabaciones').innerHTML = `<table class="tb">
+      <tr><th>Fecha</th><th>Hora</th><th>Agente</th><th>Número</th><th>Tamaño</th><th></th></tr>
+      ${grabaciones.map((g) => `<tr${g.vacia ? ' style="opacity:.55"' : ''}>
+        <td class="mono">${g.fecha || '—'}</td>
+        <td class="mono">${g.hora || '—'}</td>
+        <td>${g.agente || '—'}<br><span class="mono" style="font-size:10.5px;color:var(--ink-3)">ext. ${g.extension || '—'}</span></td>
+        <td class="mono">${g.numero || '—'}</td>
+        <td class="mono">${tamano(g.bytes)}</td>
+        <td style="white-space:nowrap">
+          ${g.vacia
+            ? '<span class="t o">Sin audio</span>'
+            : `<button class="b b-teal b-sm" data-grab="${g.id}">Escuchar</button>`}
+        </td>
+      </tr>`).join('')}</table>`;
+
+    if (r.mostrando && r.total > r.mostrando) {
+      $$('tablaGrabaciones').insertAdjacentHTML('beforeend',
+        `<p class="c-sub" style="margin-top:9px">Mostrando ${r.mostrando} de ${r.total}. Afina los filtros para ver el resto.</p>`);
+    }
   }
 
-  $$('btnBuscarGrab')?.addEventListener('click', buscarGrabaciones);
+  const tamano = (b) => !b ? '—'
+    : b < 1024 ? b + ' B'
+    : b < 1048576 ? (b / 1024).toFixed(0) + ' KB'
+    : (b / 1048576).toFixed(1) + ' MB';
+
+  $$('btnBuscarGrab')?.addEventListener('click', async () => {
+    await buscarGrabaciones();
+    /* Solo se recalculan los agentes cuando no se está filtrando por
+       uno, para no reducir el desplegable a una sola opción. */
+    if (!$$('grabAgente').value) llenarAgentes();
+  });
+
+  ['grabDesde', 'grabHasta', 'grabAgente'].forEach((id) =>
+    $$(id)?.addEventListener('change', buscarGrabaciones));
+
+  $$('grabNumero')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') buscarGrabaciones();
+  });
+
+  let grabActual = null;
 
   $$('tablaGrabaciones')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-grab]');
     if (!b) return;
-    const g = GRABACIONES.find((x) => x.id === b.dataset.grab);
+
+    const g = grabaciones.find((x) => x.id === b.dataset.grab);
     if (!g) return;
+    grabActual = g;
 
     $$('reproductor').style.display = '';
     $$('grabDetalle').textContent =
-      `${g.agente} · ${g.numero} · ${g.fecha} · ${duracion(g.seg)}`;
-    $$('grabRuta').textContent =
-      `/var/spool/asterisk/monitor/${g.fecha.slice(6,10)}/${g.id}.wav`;
-    aviso('Con el backend conectado, aquí suena el audio del servidor.', 'av-b');
+      `${g.agente || 'ext. ' + g.extension} · ${g.numero} · ${g.fecha} ${g.hora}`;
+    $$('grabRuta').textContent = g.id;
+
+    const audio = $$('audioGrab');
+    audio.src = servicio.urlGrabacion(g.id);
+    audio.play().catch(() => {
+      /* Algunos navegadores exigen un gesto del usuario. Ya lo hubo al
+         pulsar el botón, pero si aun así lo bloquea, queda el control
+         del reproductor. */
+    });
+
+    /* Marca visual de cuál se está escuchando */
+    $$('tablaGrabaciones').querySelectorAll('[data-grab]').forEach((x) =>
+      x.classList.toggle('b-dark', x === b));
+  });
+
+  $$('audioGrab')?.addEventListener('error', () => {
+    aviso('No se pudo reproducir la grabación. Puede que ya no esté en el servidor.', 'av-a');
   });
 
   $$('btnDescargarGrab')?.addEventListener('click', () => {
-    aviso('La descarga se habilita cuando el backend exponga el archivo.', 'av-b');
+    if (!grabActual) return;
+    /* Se abre en una pestaña: el navegador la descarga por su nombre. */
+    window.open(servicio.urlGrabacion(grabActual.id), '_blank');
   });
 
   /* ═══════════════════════════════════════════════════════════════

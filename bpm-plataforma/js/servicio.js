@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════
    BPM CONSULTING — SERVICIO DE PLATAFORMA (SIMULADO)
- 
+
    Este archivo representa al BACKEND que todavía no existe.
- 
+
    ---------------------------------------------------------------------
    CONTRATO CON EL BACKEND REAL
- 
+
      POST   /api/sesion            { usuario, clave }
        → { id, nombre, rol, campana, extension, permisos }
      POST   /api/sip/credencial    (con el token de sesión)
@@ -17,27 +17,27 @@
      POST   /api/formularios       → crear o modificar
      POST   /api/respuestas        → envío de formularios diligenciados
      GET    /api/reportes/:tipo    → datos para descargar
- 
+
    Los datos EN VIVO (campañas, agentes, colas) vendrán de los eventos
    del AMI de Asterisk, no de consultas repetidas. Ver Sección 8 del
    manual de integración.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
- 
- 
+
+
 /* ═══════════════════════════════════════════════════════════════
    Los datos de negocio (contactos, catálogo de tipificación y
    marcación rápida) vienen del backend. Aquí solo quedan las
    estructuras vacías que el código necesita para no fallar mientras
    el servidor responde.
    ═══════════════════════════════════════════════════════════════ */
- 
+
 const DIRECTORIO = [];
 const CATALOGO = {};
 const MARCACION_RAPIDA = {};
- 
+
 const servicio = (() => {
- 
+
   /* ═════════════════════════════════════════════════════════════════
      USUARIOS · en producción: tabla `usuario`
      Cada persona YA trae su extensión — requisito de la reunión:
@@ -47,7 +47,7 @@ const servicio = (() => {
      usuarios: la plataforma lo dice con claridad en lugar de dejar
      entrar a cualquiera. */
   const USUARIOS = [];
- 
+
   /* ═════════════════════════════════════════════════════════════════
      CAMPAÑAS Y COLAS
      Cada campaña se corresponde con una cola de Asterisk. Ese vínculo
@@ -56,7 +56,7 @@ const servicio = (() => {
      ═════════════════════════════════════════════════════════════════ */
   /* Las campañas vienen del backend. */
   const CAMPANAS = [];
- 
+
   /* ═════════════════════════════════════════════════════════════════
      ESTADO EN VIVO (simulado)
      En producción llega por WebSocket desde el backend, que a su vez
@@ -64,35 +64,35 @@ const servicio = (() => {
      ═════════════════════════════════════════════════════════════════ */
   const ESTADOS_AGENTE = ['Disponible', 'En llamada', 'Cierre', 'Baño',
                           'Almuerzo', 'Break', 'Retroalimentación'];
- 
+
   /* El panel de supervisión se alimenta de los eventos que emite la
      central. Mientras ese módulo no exista, no se inventan agentes ni
      colas: el panel se muestra vacío y lo dice. */
   const vivo = { agentes: [], colas: [] };
- 
+
   /** Avanza la simulación un segundo. pantalla.js la llama con un intervalo. */
   /** Antes avanzaba una simulación del estado de la operación.
       Ahora no hace nada: los datos reales llegarán del backend cuando
       exista el módulo de eventos en vivo. Se conserva la función para
       no romper a quien la llama. */
   function tictac() { /* sin simulación */ }
- 
- 
+
+
   const estadoVivo = () => ({
     agentes: vivo.agentes.map((a) => ({ ...a })),
     colas: vivo.colas.map((c) => ({ ...c })),
   });
- 
+
   /* ═════════════════════════════════════════════════════════════════
      FORMULARIOS · tablas `formulario` y `formulario_campo`
      El administrador y el supervisor los crean; el agente los llena.
      ═════════════════════════════════════════════════════════════════ */
   const CLAVE_FORMS = 'bpm.formularios';
- 
+
   /* Los formularios los crea el superadministrador desde la
      plataforma y se guardan en la base. */
   const FORMULARIOS_BASE = [];
- 
+
   const TIPOS_CAMPO = [
     { id: 'texto',       nombre: 'Texto corto' },
     { id: 'texto_largo', nombre: 'Texto largo' },
@@ -101,7 +101,7 @@ const servicio = (() => {
     { id: 'opcion',      nombre: 'Lista de opciones' },
     { id: 'casilla',     nombre: 'Casilla de verificación' },
   ];
- 
+
   function formularios() {
     try {
       const g = localStorage.getItem(CLAVE_FORMS);
@@ -109,32 +109,32 @@ const servicio = (() => {
     } catch { /* modo privado */ }
     return JSON.parse(JSON.stringify(FORMULARIOS_BASE));
   }
- 
+
   function guardarFormularios(lista) {
     try { localStorage.setItem(CLAVE_FORMS, JSON.stringify(lista)); } catch { /* nada */ }
   }
- 
+
   /** Formularios activos de una campaña. Es lo que ve el agente. */
   function formulariosDe(campana) {
     return formularios().filter((f) => f.activo && (f.campana === campana || f.campana === 'Todas'));
   }
- 
+
   /* ═════════════════════════════════════════════════════════════════
      RESPUESTAS SIN CONEXIÓN
      El agente diligencia; si el envío falla, la respuesta queda en una
      cola local con estado "pendiente" y se reintenta. Nunca se pierde.
      ═════════════════════════════════════════════════════════════════ */
   const CLAVE_COLA = 'bpm.respuestas.pendientes';
- 
+
   function pendientes() {
     try { return JSON.parse(localStorage.getItem(CLAVE_COLA) || '[]'); }
     catch { return []; }
   }
- 
+
   function guardarPendientes(lista) {
     try { localStorage.setItem(CLAVE_COLA, JSON.stringify(lista)); } catch { /* nada */ }
   }
- 
+
   /** Encola una respuesta. Se guarda SIEMPRE antes de intentar enviarla. */
   function encolarRespuesta(resp) {
     const lista = pendientes();
@@ -147,7 +147,7 @@ const servicio = (() => {
     guardarPendientes(lista);
     return lista.length;
   }
- 
+
   /**
    * Intenta enviar lo pendiente.
    * Reemplazar por: POST /api/respuestas
@@ -166,7 +166,7 @@ const servicio = (() => {
     guardarPendientes([]);
     return { enviadas: lista.length, quedan: 0 };
   }
- 
+
   /* ═════════════════════════════════════════════════════════════════
      REPORTES · en producción salen de consultas sobre llamada/interaccion
      ═════════════════════════════════════════════════════════════════ */
@@ -180,11 +180,11 @@ const servicio = (() => {
     { id: 'pausas',   nombre: 'Pausas del turno',
       desc: 'Cuánto tiempo estuvo cada agente en cada pausa.' },
   ];
- 
+
   /** Devuelve { columnas, filas } listo para pintar o descargar en CSV. */
   function generarReporte(tipo) {
     const v = estadoVivo();
- 
+
     if (tipo === 'agentes') {
       return {
         columnas: ['Extensión', 'Agente', 'Campaña', 'Estado', 'Llamadas', 'TMO (s)'],
@@ -208,7 +208,7 @@ const servicio = (() => {
     }
     return { columnas: [], filas: [] };   // 'llamadas' lo arma pantalla.js
   }
- 
+
   /* ═════════════════════════════════════════════════════════════════
      HORARIOS
      "El supervisor puede tomar acciones como cerrar horarios."
@@ -216,7 +216,7 @@ const servicio = (() => {
   const CLAVE_HOR = 'bpm.horarios';
   /* Los horarios son un atributo de cada campaña. */
   const HORARIOS_BASE = [];
- 
+
   function horarios() {
     try {
       const g = localStorage.getItem(CLAVE_HOR);
@@ -227,7 +227,7 @@ const servicio = (() => {
   function guardarHorarios(l) {
     try { localStorage.setItem(CLAVE_HOR, JSON.stringify(l)); } catch { /* nada */ }
   }
- 
+
   /* ═════════════════════════════════════════════════════════════════
      CONFIGURACIÓN DE LA CENTRAL
      En producción esto NO viaja al navegador: lo sabe el backend y lo
@@ -245,11 +245,11 @@ const servicio = (() => {
       ice: CONFIG.pbx.ice || [],
     };
   }
- 
+
   function hayPbxConfigurada() {
     return !!(CONFIG.pbx.wss && CONFIG.pbx.dominio && !CONFIG.simulador);
   }
- 
+
   async function autenticar(usuario, clave) {
     /* ── Con backend ── */
     if (hayApi()) {
@@ -257,7 +257,7 @@ const servicio = (() => {
       guardarToken(d.token);
       return { ...d.usuario, usuario: d.usuario.usuario || usuario };
     }
- 
+
     /* ── Sin backend ──
        No hay dónde validar la contraseña, así que no se deja entrar.
        Antes se aceptaba cualquier clave contra una lista local, y eso
@@ -265,7 +265,7 @@ const servicio = (() => {
     if (!USUARIOS.length) {
       throw new Error('No hay conexión con el servidor. Avisa al área de tecnología.');
     }
- 
+
     await demora(350);
     const u = USUARIOS.find((x) => x.usuario === String(usuario).toLowerCase().trim());
     if (!u || !clave) throw new Error('Usuario o contraseña incorrectos.');
@@ -276,7 +276,7 @@ const servicio = (() => {
       permisos: permisosDeRol(u.rol),
     };
   }
- 
+
   async function credencialSip(sesion) {
     /* Con backend, la credencial la emite el servidor: temporal y
        asociada a la sesión. El navegador nunca ve una clave fija. */
@@ -285,7 +285,7 @@ const servicio = (() => {
       if (!d.wss || !d.dominio) throw new Error('SIN_PBX');
       return { ...d, ext: d.extension || d.ext };
     }
- 
+
     await demora(250);
     const pbx = leerPbx();
     if (!pbx.wss || !pbx.dominio) throw new Error('SIN_PBX');
@@ -298,7 +298,7 @@ const servicio = (() => {
       emitida: new Date(),
     };
   }
- 
+
   async function cerrar() {
     /* Con backend, el servidor invalida la sesión y la credencial SIP.
        Así, si alguien copió la clave de telefonía, deja de servir. */
@@ -309,7 +309,7 @@ const servicio = (() => {
     }
     await demora(120);
   }
- 
+
   /* ═════════════════════════════════════════════════════════════════
      PERMISOS POR ROL
      El rol solo define QUÉ SE MUESTRA. No hay código distinto por rol,
@@ -321,7 +321,7 @@ const servicio = (() => {
        global de colas, sin administración de la PBX. Contactos e
        historial viven DENTRO del escritorio, no en el menú. */
     const agente = ['softphone', 'tipificar', 'ficha', 'historial_sesion'];
- 
+
     /* SUPERVISOR — monitoreo y control de operaciones.
        Puede intervenir operativamente, pero NO puede borrar campañas
        ni diseñar formularios. */
@@ -333,7 +333,7 @@ const servicio = (() => {
       'escucha',          // monitoreo en tiempo real
       'reportes',         // reportería con filtros
     ];
- 
+
     /* SUPERADMINISTRADOR Y SOPORTE — herramientas maestras.
        No requiere softphone para su operación diaria. */
     const admin = [...supervisor,
@@ -343,19 +343,19 @@ const servicio = (() => {
       'modulos',              // interruptor maestro
       'telefonia',            // diagnóstico y traza
     ];
- 
+
     if (rol === 'admin') return admin;
     if (rol === 'supervisor') return supervisor;
     return agente;
   }
- 
+
   const puede = (sesion, permiso) => !!(sesion && sesion.permisos && sesion.permisos.includes(permiso));
- 
+
   /* ═════════════════════════════════════════════════════════════════
      UTILIDADES
      ═════════════════════════════════════════════════════════════════ */
   const demora = (ms) => new Promise((r) => setTimeout(r, ms));
- 
+
   /** Solo para la demostración. El backend real usa un generador seguro. */
   function generarClaveTemporal() {
     const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -363,28 +363,28 @@ const servicio = (() => {
     for (let i = 0; i < 24; i++) s += abc[Math.floor(Math.random() * abc.length)];
     return s;
   }
- 
- 
- 
+
+
+
   /* ═══════════════════════════════════════════════════════════════
      ACCESO AL BACKEND
- 
+
      Si CONFIG.api tiene una dirección, la plataforma habla con el
      servidor. Si está vacía, trabaja con los datos locales de este
      archivo, como hasta ahora.
- 
+
      Así se puede desarrollar y presentar sin backend, y activarlo
      cambiando una línea en js/config.js.
      ═══════════════════════════════════════════════════════════════ */
- 
+
   const CLAVE_TOKEN = 'bpm.token';
- 
+
   const hayApi = () => !!(typeof CONFIG !== 'undefined' && CONFIG.api);
- 
+
   const guardarToken = (t) => { try { sessionStorage.setItem(CLAVE_TOKEN, t); } catch {} };
   const leerToken    = ()  => { try { return sessionStorage.getItem(CLAVE_TOKEN); } catch { return null; } };
   const borrarToken  = ()  => { try { sessionStorage.removeItem(CLAVE_TOKEN); } catch {} };
- 
+
   /** Llamada al backend. Añade el token y traduce los errores. */
   async function api(metodo, ruta, cuerpo) {
     const token = leerToken();
@@ -401,10 +401,10 @@ const servicio = (() => {
     } catch (e) {
       throw new Error('No se pudo conectar con el servidor. Revisa que esté encendido.');
     }
- 
+
     let datos = null;
     try { datos = await r.json(); } catch {}
- 
+
     /* Un 401 significa "sesión no válida" en casi todas las rutas, pero
        en el cambio de contraseña significa "la clave actual está mal".
        Si se borrara el token ahí, el usuario perdería la sesión por
@@ -417,12 +417,12 @@ const servicio = (() => {
     if (!r.ok) throw new Error(datos?.error || 'Error ' + r.status);
     return datos;
   }
- 
- 
+
+
   /* ── Datos que el backend sirve cuando está conectado ──────────
      Todas devuelven lo mismo con o sin backend, así que las
      pantallas no cambian.                                          */
- 
+
   /** Busca el contacto por teléfono. Es la consulta de cada llamada
       entrante: tiene que responder antes de que el agente conteste. */
   async function contactoPorTelefono(numero) {
@@ -433,7 +433,7 @@ const servicio = (() => {
     const n = String(numero || '').replace(/\D/g, '');
     return DIRECTORIO.find((c) => c.n.replace(/\D/g, '') === n) || null;
   }
- 
+
   /** Catálogo de tipificación de la campaña del agente. */
   async function catalogoTipificacion(campana) {
     if (hayApi()) {
@@ -449,7 +449,7 @@ const servicio = (() => {
     }
     return CATALOGO;
   }
- 
+
   /** Registra la tipificación de una llamada terminada. */
   async function guardarTipificacion(datos) {
     if (hayApi()) {
@@ -462,7 +462,31 @@ const servicio = (() => {
     }
     return { ok: true, enviada: false };
   }
- 
+
+  /** Estado de la operación en este momento, para el supervisor.
+      Sin backend devuelve vacío: no se inventan agentes. */
+  async function estadoEnVivo() {
+    if (!hayApi()) {
+      return { agentes: [], kpis: null, telefonia: { ok: false, motivo: 'Sin backend' } };
+    }
+    return api('GET', '/vivo');
+  }
+
+  /** Grabaciones del servidor de la central. */
+  async function listarGrabaciones(filtros = {}) {
+    if (!hayApi()) return { total: 0, grabaciones: [], aviso: 'Requiere backend.' };
+    const q = new URLSearchParams(
+      Object.entries(filtros).filter(([, v]) => v)).toString();
+    return api('GET', '/grabaciones' + (q ? '?' + q : ''));
+  }
+
+  /** Dirección para reproducir o descargar una grabación. */
+  function urlGrabacion(archivo) {
+    if (!hayApi()) return '';
+    return CONFIG.api.replace(/\/$/, '') + '/grabaciones/' +
+           encodeURIComponent(archivo) + '?token=' + encodeURIComponent(leerToken() || '');
+  }
+
   /** Cambia la contraseña del usuario que está en sesión. */
   async function cambiarMiClave(claveActual, claveNueva) {
     if (!hayApi()) {
@@ -473,7 +497,7 @@ const servicio = (() => {
     await api('PUT', '/sesion/clave', { claveActual, claveNueva });
     return { ok: true };
   }
- 
+
   /** Inicio o fin de una pausa. */
   async function registrarPausa(tipo, entrando) {
     if (hayApi()) {
@@ -482,15 +506,15 @@ const servicio = (() => {
     }
     return { ok: true };
   }
- 
- 
+
+
   /* ═══════════════════════════════════════════════════════════════
      GESTIÓN DE USUARIOS CONTRA EL BACKEND
- 
+
      Con backend, estas funciones trabajan sobre MySQL. Sin él, sobre
      la lista local de este archivo. Las pantallas no distinguen.
      ═══════════════════════════════════════════════════════════════ */
- 
+
   /** Lista los usuarios. Siempre devuelve un arreglo. */
   async function listarUsuarios() {
     if (hayApi()) {
@@ -511,16 +535,16 @@ const servicio = (() => {
     }
     return USUARIOS.map((u) => ({ ...u }));
   }
- 
+
   const ROL_POR_ID = { 1: 'agente', 2: 'supervisor', 3: 'admin' };
   const ID_POR_ROL = { agente: 1, supervisor: 2, admin: 3 };
- 
+
   /** Crea o modifica un usuario. La contraseña NO se envía: al crear,
       el backend asigna la temporal y exige el cambio en el primer
       acceso. */
   async function guardarUsuarioRemoto(datos) {
     if (!hayApi()) return guardarUsuario(datos);
- 
+
     const cuerpo = {
       usuario: datos.usuario,
       nombre: datos.nombre,
@@ -529,7 +553,7 @@ const servicio = (() => {
       campana_id: datos.campana_id || null,
       extension: datos.extension || null,
     };
- 
+
     try {
       if (datos.id) {
         await api('PUT', '/usuarios/' + datos.id, cuerpo);
@@ -541,7 +565,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Cambia el rol de un usuario. */
   async function cambiarRolRemoto(id, usuario, rol) {
     if (!hayApi()) return cambiarRol(usuario, rol);
@@ -552,7 +576,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Reasigna la campaña de un usuario. */
   async function cambiarCampanaRemoto(id, usuario, campanaId, campana) {
     if (!hayApi()) return cambiarCampana(usuario, campana);
@@ -563,7 +587,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Devuelve al usuario a la contraseña temporal. */
   async function restablecerClave(id) {
     if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
@@ -574,7 +598,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Desactiva un usuario. No se borra, para no perder su historial. */
   async function desactivarUsuario(id) {
     if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
@@ -585,7 +609,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Crea o modifica una campaña. */
   async function guardarCampana(datos) {
     if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
@@ -600,7 +624,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Desactiva una campaña. */
   async function eliminarCampana(id) {
     if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
@@ -611,7 +635,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Abre o cierra la campaña. Sin backend opera sobre los datos
       locales, para que la plataforma siga siendo usable. */
   async function alternarHorario(id) {
@@ -628,7 +652,10 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
+  /** Lista las grabaciones del servidor, con filtros opcionales. */
+
+
   /** Vuelve a activar un usuario dado de baja. */
   async function reactivarUsuario(id) {
     if (!hayApi()) return { ok: false, error: 'Requiere backend.' };
@@ -639,7 +666,7 @@ const servicio = (() => {
       return { ok: false, error: e.message };
     }
   }
- 
+
   /** Campañas, desde el backend o locales. */
   async function listarCampanas() {
     if (hayApi()) {
@@ -647,35 +674,35 @@ const servicio = (() => {
     }
     return CAMPANAS.map((c) => ({ ...c }));
   }
- 
+
   /* ── Gestión de usuarios ────────────────────────────────────────
      En producción esto son operaciones contra la base de datos.
      El rol solo define qué se muestra: no hay lógica distinta por
      rol, así que cambiarlo no requiere nada más.                    */
- 
+
   function cambiarRol(usuario, rol) {
     const u = USUARIOS.find((x) => x.usuario === usuario);
     if (!u) return { ok: false, error: 'Usuario no encontrado' };
     u.rol = rol;
     return { ok: true };
   }
- 
+
   function cambiarCampana(usuario, campana) {
     const u = USUARIOS.find((x) => x.usuario === usuario);
     if (!u) return { ok: false, error: 'Usuario no encontrado' };
     u.campana = campana;
     return { ok: true };
   }
- 
+
   function guardarUsuario(datos) {
     const existe = USUARIOS.find((x) => x.usuario === datos.usuario);
- 
+
     // Una extensión no puede compartirse entre dos personas
     const ext = String(datos.extension || '').trim();
     if (ext && USUARIOS.some((x) => x.extension === ext && x.usuario !== datos.usuario)) {
       return { ok: false, error: 'Esa extensión ya está asignada a otro usuario.' };
     }
- 
+
     if (existe) {
       Object.assign(existe, datos);
     } else {
@@ -683,11 +710,11 @@ const servicio = (() => {
     }
     return { ok: true };
   }
- 
+
   function marcacionRapidaDe(campana) {
     return MARCACION_RAPIDA[campana] || MARCACION_RAPIDA['Todas'] || [];
   }
- 
+
   return {
     autenticar, credencialSip, cerrar, puede,
     leerPbx, hayPbxConfigurada,
@@ -700,6 +727,7 @@ const servicio = (() => {
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
+    estadoEnVivo, listarGrabaciones, urlGrabacion,
     guardarTipificacion, registrarPausa,
     get usuarios()    { return USUARIOS.map((u) => ({ ...u })); },
     get campanas()    { return CAMPANAS.map((c) => ({ ...c })); },
@@ -707,4 +735,3 @@ const servicio = (() => {
     get tiposReporte(){ return TIPOS_REPORTE.map((t) => ({ ...t })); },
   };
 })();
- 

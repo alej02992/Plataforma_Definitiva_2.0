@@ -21,17 +21,25 @@ const supervision = (() => {
   let ultimoReporte = null;
 
   /* ═══════════ ARRANQUE Y PARADA ═══════════ */
+
+  /* Estado que se muestra. Se rellena con lo que responde el backend.
+     Si no hay backend, queda vacío: no se inventan agentes. */
+  let estado = { agentes: [], kpis: null, telefonia: null };
+  let consultando = false;
+
   function iniciar() {
     llenarFiltro();
     llenarReportes();
-    pintar();
+    refrescar();                       // primera consulta inmediata
     detener();
+
+    /* Se pregunta cada tres segundos. No es tan inmediato como
+       escuchar los eventos de la central, pero en pantalla se ve igual
+       y no requiere mantener un canal permanente abierto. */
     intervalo = setInterval(() => {
-      servicio.tictac();
-      // Solo repinta si el supervisor está mirando: no gasta en vano
       const v = document.querySelector('.vista.on');
-      if (v && v.dataset.v === 'supervision') pintar();
-    }, 1000);
+      if (v && v.dataset.v === 'supervision') refrescar();
+    }, 3000);
   }
 
   function detener() {
@@ -39,71 +47,83 @@ const supervision = (() => {
     intervalo = null;
   }
 
+  /** Pide el estado al backend y repinta. */
+  async function refrescar() {
+    if (consultando) return;           // evita solapar consultas lentas
+    consultando = true;
+
+    try {
+      const v = await servicio.estadoEnVivo();
+      estado = v;
+      avisoTelefonia(v.telefonia);
+      pintar();
+    } catch (e) {
+      mostrarError(e.message);
+    } finally {
+      consultando = false;
+    }
+  }
+
+  /** Si el backend no pudo consultar la central, se dice. Es mejor que
+      el supervisor lo sepa a que crea que nadie está en llamada. */
+  function avisoTelefonia(t) {
+    const caja = $('avisoVivo');
+    if (!caja) return;
+
+    if (!t || t.ok) { caja.style.display = 'none'; return; }
+
+    caja.style.display = '';
+    caja.innerHTML = `<div class="aviso av-a" style="margin:0">
+      <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <div>Se muestran los agentes conectados, pero no se pudo consultar
+      el estado de las llamadas en la central.</div></div>`;
+  }
+
+  function mostrarError(msg) {
+    $('tablaAgentes').innerHTML = `<div class="aviso av-r" style="margin:0">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <div>No se pudo obtener el estado de la operación: ${msg}</div></div>`;
+  }
+
   /* ═══════════ INDICADORES ═══════════ */
   function pintar() {
-    const v = servicio.estadoVivo();
-    const ag = filtro === 'Todas' ? v.agentes : v.agentes.filter((a) => a.campana === filtro);
-    const co = filtro === 'Todas' ? v.colas : v.colas.filter((c) => c.campana === filtro);
+    const ag = filtro === 'Todas'
+      ? estado.agentes
+      : estado.agentes.filter((a) => a.campana === filtro);
 
-    pintarKpis(ag, co);
-    pintarColas(co);
+    pintarKpis(ag, estado.kpis);
     pintarAgentes(ag);
     pintarCampanas();
   }
 
-  function pintarKpis(agentes, colas) {
-    const conectados = agentes.length;
+  function pintarKpis(agentes, kpis) {
     const enLlamada = agentes.filter((a) => a.estado === 'En llamada').length;
-    const libres = agentes.filter((a) => a.estado === 'Disponible').length;
-    const enPausa = agentes.filter((a) =>
-      ['Baño', 'Almuerzo', 'Break', 'Retroalimentación'].includes(a.estado)).length;
-    const enCola = colas.reduce((s, c) => s + c.enEspera, 0);
-    const espera = Math.max(0, ...colas.map((c) => c.masVieja));
-    const atendidas = colas.reduce((s, c) => s + c.atendidas, 0);
-    const abandonadas = colas.reduce((s, c) => s + c.abandonadas, 0);
-    const total = atendidas + abandonadas;
-    const nivel = total ? Math.round((atendidas / total) * 100) : 0;
+    const disponibles = agentes.filter((a) => a.estado === 'Disponible').length;
+    const enPausa = agentes.length - enLlamada - disponibles
+                  - agentes.filter((a) => a.estado === 'Timbrando').length;
 
-    const tarjeta = (et, vl, sb, clase = '') =>
-      `<div class="kpi ${clase}"><div class="et">${et}</div>` +
-      `<div class="vl">${vl}</div><div class="sb">${sb}</div></div>`;
+    const tarjeta = (et, valor, sub) => `
+      <div class="kpi"><span class="kpi-et">${et}</span>
+        <b>${valor}</b><span class="kpi-sub">${sub || ''}</span></div>`;
 
     $('kpis').innerHTML = [
-      tarjeta('En cola', enCola, enCola ? 'espera máxima ' + reloj(espera) : 'nadie esperando',
-        enCola > 2 ? 'alerta' : enCola === 0 ? 'bien' : ''),
-      tarjeta('En llamada', enLlamada, `de ${conectados} conectados`),
-      tarjeta('Disponibles', libres, libres === 0 ? 'sin agentes libres' : 'listos para atender',
-        libres === 0 ? 'alerta' : ''),
-      tarjeta('En pausa', enPausa, 'baño, almuerzo o break'),
-      tarjeta('Atendidas', atendidas, `${abandonadas} abandonadas`),
-      tarjeta('Nivel de servicio', nivel + '%', 'atendidas sobre el total',
-        nivel >= 85 ? 'bien' : nivel < 70 ? 'alerta' : ''),
+      tarjeta('Conectados', agentes.length, 'con sesión abierta'),
+      tarjeta('En llamada', enLlamada, 'hablando ahora'),
+      tarjeta('Disponibles', disponibles, 'esperando llamada'),
+      tarjeta('En pausa', enPausa < 0 ? 0 : enPausa, 'no reciben'),
+      tarjeta('Llamadas hoy', kpis ? kpis.llamadasHoy : '—', 'del turno'),
+      tarjeta('Abandonadas', kpis ? kpis.abandonadasHoy : '—', 'sin contestar'),
     ].join('');
   }
 
-  /* ═══════════ COLAS ═══════════ */
-  function pintarColas(colas) {
-    const enCola = colas.reduce((s, c) => s + c.enEspera, 0);
-    $('colaTag').className = 't ' + (enCola > 2 ? 'r' : enCola ? 'a' : 'g');
-    $('colaTag').textContent = enCola ? enCola + ' esperando' : 'sin espera';
-
-    $('tablaColas').innerHTML = `<table class="tb">
-      <tr><th>Campaña</th><th>En cola</th><th>Más antigua</th><th>Atendidas</th><th>Nivel</th></tr>
-      ${colas.map((c) => {
-        const cls = c.nivel >= 85 ? '' : c.nivel >= 70 ? 'med' : 'bajo';
-        return `<tr>
-          <td><b>${c.campana}</b></td>
-          <td><span class="t ${c.enEspera > 2 ? 'r' : c.enEspera ? 'a' : 'g'}">${c.enEspera}</span></td>
-          <td class="mono">${c.enEspera ? reloj(c.masVieja) : '—'}</td>
-          <td class="mono">${c.atendidas}</td>
-          <td><div style="display:flex;align-items:center;gap:7px">
-            <div class="nivel"><i class="${cls}" style="width:${c.nivel}%"></i></div>
-            <span class="mono" style="font-size:11px">${c.nivel}%</span></div></td>
-        </tr>`;
-      }).join('')}</table>`;
+  /* Las llamadas en cola requieren los eventos de la central. Hasta
+     que exista ese módulo, la tabla se deja con su aviso. */
+  function pintarColas() {
+    const t = $('tablaColas');
+    if (t) t.innerHTML =
+      '<div class="vacio">Las llamadas en cola requieren el módulo de eventos de la central.</div>';
   }
 
-  /* ═══════════ AGENTES ═══════════ */
   function pintarAgentes(agentes) {
     $('agentesTag').className = 't o';
     $('agentesTag').textContent = agentes.length + ' agentes';
