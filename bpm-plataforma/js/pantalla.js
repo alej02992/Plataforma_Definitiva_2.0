@@ -88,7 +88,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Llamadas', permiso:'softphone',
+  { v:'escritorio', et:'Telefonía', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -123,7 +123,7 @@ const MENU = [
 ];
 
 const TITULOS = {
-  escritorio:'Llamadas', supervision:'Seguimiento de la operación',
+  escritorio:'Telefonía', supervision:'Seguimiento de la operación',
   campanas:'Gestión de campañas', grabaciones:'Grabaciones',
   escucha:'Escucha en línea', reportes:'Reportería',
   disenador:'Diseñador de formularios', admcampanas:'Configuración de campañas',
@@ -167,7 +167,7 @@ function irA(vista) {
   if (typeof supervision !== 'undefined') {
     if (vista === 'supervision') supervision.iniciar(); else supervision.detener();
   }
-  if (vista === 'reportes' && typeof supervision !== 'undefined') supervision.pintar();
+  if (vista === 'reportes' && typeof reporteLlamadas !== 'undefined') reporteLlamadas.abrir();
   if (vista === 'formularios' && typeof formularios !== 'undefined') formularios.abrirAgente();
   if (vista === 'disenador' && typeof formularios !== 'undefined') formularios.abrirDisenador();
 
@@ -477,21 +477,6 @@ function guardarTipificacion(porTiempo) {
   clearInterval(ui.acwId);
   registrarLlamada({ ...ui.pendiente, tipificacion: tip });
 
-  /* Con backend, la tipificación se envía al servidor. Si falla, la
-     llamada queda registrada igual y se avisa. */
-  if (tip) {
-    servicio.guardarTipificacion({
-      linkedid: ui.pendiente?.linkedid,
-      numero: ui.pendiente?.numero,
-      categoria: tip.cat, subcategoria: tip.sub,
-      observaciones: tip.obs, agenda: tip.agenda,
-      segundos: ui.pendiente?.segundos,
-    }).then((r) => {
-      if (r.enviada === false && servicio.hayApi()) {
-        aviso('La tipificación se guardó localmente, pero no llegó al servidor.', 'av-a');
-      }
-    });
-  }
   ui.pendiente = null;
   cerrarTipificador();
   telefonia.terminarCierre();
@@ -515,6 +500,25 @@ function horaDe(l) {
 function registrarLlamada(ll) {
   ui.llamadas.unshift(ll);
   pintarHistorial();
+
+  /* Se guarda en la base para el reporte de llamadas. Si falla, la
+     llamada sigue en el historial del turno y se avisa. */
+  const t = ll.tipificacion;
+  servicio.registrarLlamadaServidor({
+    callId: ll.callId,
+    numero: ll.numero,
+    direccion: ll.direccion,
+    contestada: !!ll.contestada,
+    segundos: ll.segundos,
+    inicio: ll.hora instanceof Date ? new Date(ll.hora.getTime() - (Number(ll.segundos) || 0) * 1000) : null,
+    categoria: t ? t.cat : null,
+    subcategoria: t && t.sub ? t.sub : null,
+    observaciones: t ? t.obs : null,
+  }).then((r) => {
+    if (!r.ok && servicio.hayApi()) {
+      aviso('La llamada quedó en tu historial, pero no se pudo guardar en el servidor.', 'av-a');
+    }
+  });
 }
 
 function pintarHistorial() {

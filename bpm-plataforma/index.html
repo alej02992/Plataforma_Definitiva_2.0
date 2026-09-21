@@ -308,8 +308,8 @@
 
 
             <div class="c">
-              <div class="c-h"><h2>Pendientes de envío</h2><span class="t o" id="pendN">0</span></div>
-              <p class="c-sub">Respuestas guardadas en este equipo que aún no se han enviado.</p>
+              <div class="c-h"><h2>Colas de llamadas</h2><span class="t o" id="pendN">0</span></div>
+              <p class="c-sub">LLamadas en cola.</p>
               <div id="listaPend"><div class="vacio">No hay respuestas pendientes.</div></div>
               <button class="b b-gh b-w b-sm" id="btnSincronizar" style="margin-top:9px">Enviar pendientes</button>
             </div>
@@ -348,6 +348,8 @@
       </section>
 
       <section class="vista" data-v="supervision">
+        <!-- Aviso si el backend no pudo consultar la central -->
+        <div id="avisoVivo" style="display:none;margin-bottom:12px"></div>
         <div class="tarjetas" id="kpis"></div>
 
         <div class="rej rej-2">
@@ -378,15 +380,43 @@
       <!-- ══════ REPORTES ══════ -->
       <section class="vista" data-v="reportes">
         <div class="c">
-          <div class="c-h"><h2>Reportes</h2></div>
-          <p class="c-sub">Selecciona un reporte para generarlo y descargarlo en CSV.</p>
-          <div class="reps" id="listaReportes"></div>
+          <div class="c-h"><h2>Reporte de llamadas</h2><span class="t o" id="rlTag">—</span></div>
+          <p class="c-sub">Cada llamada gestionada en la plataforma: quién la hizo,
+            a qué número, cuánto duró y cómo se tipificó.</p>
+          <div class="r2">
+            <div class="f"><label>Desde</label><input class="fi" type="date" id="rlDesde"></div>
+            <div class="f"><label>Hasta</label><input class="fi" type="date" id="rlHasta"></div>
+          </div>
+          <div class="r2">
+            <div class="f"><label>Agente</label>
+              <select class="fi" id="rlAgente"><option value="">Todos</option></select></div>
+            <div class="f"><label>Estado</label>
+              <select class="fi" id="rlEstado">
+                <option value="">Todas</option>
+                <option value="contestada">Contestadas</option>
+                <option value="no_contestada">No contestadas</option>
+              </select></div>
+          </div>
+          <div class="f"><label>Número</label>
+            <input class="fi mono" id="rlNumero" placeholder="Todo o parte del número" autocomplete="off"></div>
+          <div class="ctrls">
+            <button class="b b-teal" id="btnRlConsultar">Consultar</button>
+            <button class="b b-gh" id="btnRlCsv">Descargar CSV</button>
+          </div>
         </div>
-        <div class="c" id="repResultado" style="display:none">
-          <div class="c-h"><h2 id="repTitulo">Resultado</h2>
-            <button class="b b-teal b-sm" id="btnDescargarCsv">Descargar CSV</button></div>
-          <p class="c-sub" id="repSub"></p>
-          <div id="repTabla"></div>
+
+        <div class="tarjetas" id="rlResumen"></div>
+
+        <div class="c">
+          <div id="rlTabla"><div class="vacio">Pulsa Consultar para ver las llamadas.</div></div>
+        </div>
+
+        <!-- Elementos del reporte anterior. El módulo de supervisión aún
+             los busca al arrancar; se conservan ocultos para no romperlo. -->
+        <div style="display:none">
+          <div id="listaReportes"></div>
+          <div id="repResultado"><span id="repTitulo"></span><span id="repSub"></span>
+            <div id="repTabla"></div><button id="btnDescargarCsv"></button></div>
         </div>
       </section>
 
@@ -722,16 +752,6 @@
 
 <audio id="audioRemoto" autoplay style="display:none"></audio>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     El orden importa:
-       1. config.js       ← el único archivo que hay que editar
-       2. sip.js          la librería SIP
-       3. servicio.js     usuarios, credenciales y datos
-       4. telefonia.js    el módulo de llamadas
-       5. supervision.js  el panel del supervisor
-       6. formularios.js  captura y diseñador
-       7. pantalla.js     la interfaz que lo une todo
-     ═══════════════════════════════════════════════════════════════ -->
 <script src="js/config.js"></script>
 <script src="lib/sip.js"></script>
 <script src="js/servicio.js"></script>
@@ -739,6 +759,7 @@
 <script src="js/supervision.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
+<script src="js/reportes.js"></script>
 <script src="js/pantalla.js"></script>
 
 </body>

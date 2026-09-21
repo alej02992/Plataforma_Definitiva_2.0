@@ -494,6 +494,25 @@ const servicio = (() => {
            encodeURIComponent(archivo) + '?token=' + encodeURIComponent(leerToken() || '');
   }
 
+  /* ── Registro y reporte de llamadas ── */
+
+  /** Guarda la llamada en la base. Si falla, no interrumpe al agente:
+      la llamada ya está en su historial y se avisa. */
+  async function registrarLlamadaServidor(ll) {
+    if (!hayApi()) return { ok: false };
+    try {
+      await api('POST', '/llamadas', ll);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  async function reporteLlamadas(filtros = {}) {
+    const q = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v)).toString();
+    return api('GET', '/reportes/llamadas' + (q ? '?' + q : ''));
+  }
+
   /** Cambia la contraseña del usuario que está en sesión. */
   async function cambiarMiClave(claveActual, claveNueva) {
     if (!hayApi()) {
@@ -734,6 +753,7 @@ const servicio = (() => {
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
+    registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     guardarTipificacion, registrarPausa,
     get usuarios()    { return USUARIOS.map((u) => ({ ...u })); },

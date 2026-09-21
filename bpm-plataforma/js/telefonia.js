@@ -273,6 +273,7 @@ const telefonia = (() => {
         emitir('fin', {
           numero: est.numero, direccion: est.direccion,
           contestada, segundos: dur,
+          callId: est.session?.request?.callId,     // identificador SIP de la llamada
         });
         traza('Llamada finalizada' + (contestada ? ' · ' + dur + ' s' : ' sin contestar'), 'info');
         if (session === est.session) limpiar(contestada);
@@ -332,7 +333,8 @@ const telefonia = (() => {
     if (est.simulado) {
       const hubo = est.estado === 'activa' || est.estado === 'espera';
       emitir('fin', { numero: est.numero, direccion: est.direccion, contestada: hubo,
-                      segundos: hubo ? Math.round((Date.now() - est.inicio) / 1000) : 0 });
+                      segundos: hubo ? Math.round((Date.now() - est.inicio) / 1000) : 0,
+                      callId: est.session?.request?.callId });
       return limpiar(hubo);
     }
     if (!s) return limpiar(false);
