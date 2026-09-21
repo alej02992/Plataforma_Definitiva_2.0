@@ -119,34 +119,46 @@ const administracion = (() => {
 
   let grabaciones = [];
 
+  /* Al abrir no se lista nada: con muchas grabaciones, mostrarlas todas
+     sería un reguero inútil. Se pide primero un agente o una fecha. */
   async function abrirGrabaciones() {
-    await buscarGrabaciones();
-    llenarAgentes();
+    grabaciones = [];
+    $$('grabN').textContent = '0';
+    $$('reproductor').style.display = 'none';
+    pedirFiltro();
+    await llenarAgentes();
   }
 
-  /* El desplegable se arma con los agentes que aparecen en las propias
-     grabaciones. Antes se pedía la lista de usuarios, pero eso requiere
-     permiso de administración y el supervisor no lo tiene: el filtro le
-     quedaba vacío. */
-  function llenarAgentes() {
-    const vistos = new Map();
-    grabaciones.forEach((g) => {
-      if (g.extension && !vistos.has(g.extension)) {
-        vistos.set(g.extension, g.agente && g.agente !== '—'
-          ? g.agente : 'Extensión ' + g.extension);
-      }
-    });
+  function pedirFiltro() {
+    $$('tablaGrabaciones').innerHTML = `
+      <div class="vacio" style="padding:26px 12px">
+        <svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:var(--ink-3);fill:none;stroke-width:1.6;margin-bottom:8px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <div>Elige un agente o una fecha para buscar las grabaciones.</div>
+      </div>`;
+  }
 
+  const hayFiltro = () =>
+    !!($$('grabAgente').value || $$('grabDesde').value ||
+       $$('grabHasta').value || $$('grabNumero').value.trim());
+
+  async function llenarAgentes() {
+    const lista = await servicio.agentesGrabaciones();
     const actual = $$('grabAgente').value;
-    $$('grabAgente').innerHTML = '<option value="">Todos</option>' +
-      [...vistos.entries()]
-        .sort((a, b) => a[1].localeCompare(b[1]))
-        .map(([ext, nom]) => `<option value="${ext}">${nom}</option>`).join('');
+
+    $$('grabAgente').innerHTML = '<option value="">Selecciona un agente…</option>' +
+      lista.map((a) => `<option value="${a.extension}">${a.agente}</option>`).join('');
 
     if (actual) $$('grabAgente').value = actual;   // no se pierde el filtro
   }
 
   async function buscarGrabaciones() {
+    if (!hayFiltro()) {
+      grabaciones = [];
+      $$('grabN').textContent = '0';
+      pedirFiltro();
+      return;
+    }
+
     $$('tablaGrabaciones').innerHTML = '<div class="vacio">Buscando…</div>';
     $$('reproductor').style.display = 'none';
 
@@ -200,11 +212,12 @@ const administracion = (() => {
     : b < 1048576 ? (b / 1024).toFixed(0) + ' KB'
     : (b / 1048576).toFixed(1) + ' MB';
 
-  $$('btnBuscarGrab')?.addEventListener('click', async () => {
-    await buscarGrabaciones();
-    /* Solo se recalculan los agentes cuando no se está filtrando por
-       uno, para no reducir el desplegable a una sola opción. */
-    if (!$$('grabAgente').value) llenarAgentes();
+  $$('btnBuscarGrab')?.addEventListener('click', () => {
+    if (!hayFiltro()) {
+      aviso('Elige un agente o una fecha para buscar.', 'av-a');
+      return;
+    }
+    buscarGrabaciones();
   });
 
   ['grabDesde', 'grabHasta', 'grabAgente'].forEach((id) =>
@@ -242,8 +255,25 @@ const administracion = (() => {
       x.classList.toggle('b-dark', x === b));
   });
 
-  $$('audioGrab')?.addEventListener('error', () => {
-    aviso('No se pudo reproducir la grabación. Puede que ya no esté en el servidor.', 'av-a');
+  /* Si el audio falla, se pregunta al servidor el motivo real. El
+     elemento <audio> solo informa "error", sin decir por qué. */
+  $$('audioGrab')?.addEventListener('error', async () => {
+    const audio = $$('audioGrab');
+    if (!audio.src) return;
+
+    let motivo = 'No se pudo reproducir la grabación.';
+    try {
+      const r = await fetch(audio.src, { method: 'GET', headers: { Range: 'bytes=0-0' } });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        motivo = r.status === 401 ? 'La sesión no es válida para reproducir. Vuelve a iniciar sesión.'
+               : r.status === 403 ? 'No tienes permiso para escuchar esta grabación.'
+               : r.status === 404 ? 'La grabación ya no está en el servidor.'
+               : (d.error || `El servidor respondió con error ${r.status}.`);
+      }
+    } catch { /* se queda el mensaje genérico */ }
+
+    aviso(motivo, 'av-a');
   });
 
   $$('btnDescargarGrab')?.addEventListener('click', () => {

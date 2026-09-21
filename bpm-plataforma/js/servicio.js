@@ -480,6 +480,13 @@ const servicio = (() => {
     return api('GET', '/grabaciones' + (q ? '?' + q : ''));
   }
 
+  /** Agentes que tienen grabaciones, para el filtro. */
+  async function agentesGrabaciones() {
+    if (!hayApi()) return [];
+    try { return await api('GET', '/grabaciones/agentes'); }
+    catch { return []; }
+  }
+
   /** Dirección para reproducir o descargar una grabación. */
   function urlGrabacion(archivo) {
     if (!hayApi()) return '';
@@ -727,7 +734,7 @@ const servicio = (() => {
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
-    estadoEnVivo, listarGrabaciones, urlGrabacion,
+    estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     guardarTipificacion, registrarPausa,
     get usuarios()    { return USUARIOS.map((u) => ({ ...u })); },
     get campanas()    { return CAMPANAS.map((c) => ({ ...c })); },
