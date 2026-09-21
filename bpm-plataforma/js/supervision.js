@@ -99,20 +99,28 @@ const supervision = (() => {
   function pintarKpis(agentes, kpis) {
     const enLlamada = agentes.filter((a) => a.estado === 'En llamada').length;
     const disponibles = agentes.filter((a) => a.estado === 'Disponible').length;
-    const enPausa = agentes.length - enLlamada - disponibles
-                  - agentes.filter((a) => a.estado === 'Timbrando').length;
+    const timbrando = agentes.filter((a) => a.estado === 'Timbrando').length;
+    const enPausa = Math.max(0, agentes.length - enLlamada - disponibles - timbrando);
 
-    const tarjeta = (et, valor, sub) => `
-      <div class="kpi"><span class="kpi-et">${et}</span>
-        <b>${valor}</b><span class="kpi-sub">${sub || ''}</span></div>`;
+    /* Las clases et, vl y sb son las que da el diseño: etiqueta
+       pequeña arriba, número grande, y aclaración debajo. */
+    const kpi = (et, valor, sub, tono = '') => `
+      <div class="kpi ${tono}">
+        <div class="et">${et}</div>
+        <div class="vl">${valor}</div>
+        <div class="sb">${sub}</div>
+      </div>`;
+
+    const abandonadas = kpis ? Number(kpis.abandonadasHoy || 0) : null;
 
     $('kpis').innerHTML = [
-      tarjeta('Conectados', agentes.length, 'con sesión abierta'),
-      tarjeta('En llamada', enLlamada, 'hablando ahora'),
-      tarjeta('Disponibles', disponibles, 'esperando llamada'),
-      tarjeta('En pausa', enPausa < 0 ? 0 : enPausa, 'no reciben'),
-      tarjeta('Llamadas hoy', kpis ? kpis.llamadasHoy : '—', 'del turno'),
-      tarjeta('Abandonadas', kpis ? kpis.abandonadasHoy : '—', 'sin contestar'),
+      kpi('Conectados', agentes.length, 'con sesión abierta'),
+      kpi('En llamada', enLlamada, 'hablando ahora', enLlamada ? 'bien' : ''),
+      kpi('Disponibles', disponibles, 'esperando llamada'),
+      kpi('En pausa', enPausa, 'no reciben', enPausa ? 'alerta' : ''),
+      kpi('Llamadas hoy', kpis ? kpis.llamadasHoy : '—', 'del turno'),
+      kpi('Abandonadas', abandonadas ?? '—', 'sin contestar',
+          abandonadas ? 'alerta' : ''),
     ].join('');
   }
 
@@ -126,33 +134,35 @@ const supervision = (() => {
 
   function pintarAgentes(agentes) {
     $('agentesTag').className = 't o';
-    $('agentesTag').textContent = agentes.length + ' agentes';
+    $('agentesTag').textContent = agentes.length +
+      (agentes.length === 1 ? ' agente' : ' agentes');
 
     if (!agentes.length) {
-      $('tablaAgentes').innerHTML = '<div class="vacio">Ningún agente en esta campaña.</div>';
+      $('tablaAgentes').innerHTML =
+        '<div class="vacio">Ningún agente conectado en esta campaña.</div>';
       return;
     }
 
     const color = (e) => e === 'En llamada' ? 'b'
                        : e === 'Disponible' ? 'g'
-                       : e === 'Cierre' ? 'b' : 'a';
+                       : e === 'Timbrando' ? 'b' : 'a';
 
+    /* Las columnas de llamadas atendidas y tiempo medio necesitan el
+       registro automático de llamadas, que todavía no existe. Se
+       omiten en lugar de mostrarlas vacías. */
     $('tablaAgentes').innerHTML = `<table class="tb">
-      <tr><th>Ext.</th><th>Agente</th><th>Campaña</th><th>Estado</th><th>Tiempo</th>
-          <th>Atendiendo</th><th>Llamadas</th><th>TMO</th></tr>
+      <tr><th>Ext.</th><th>Agente</th><th>Campaña</th><th>Estado</th>
+          <th>Tiempo</th><th>Atendiendo</th></tr>
       ${agentes.map((a) => `<tr>
-        <td class="mono">${a.ext}</td>
+        <td class="mono">${a.extension || '—'}</td>
         <td><b>${a.nombre}</b></td>
-        <td>${a.campana}</td>
+        <td>${a.campana || '—'}</td>
         <td><span class="t ${color(a.estado)}"><span class="d"></span>${a.estado}</span></td>
         <td class="mono">${reloj(a.desde)}</td>
         <td class="mono">${a.numero || '—'}</td>
-        <td class="mono">${a.llamadas}</td>
-        <td class="mono">${reloj(a.tmo)}</td>
       </tr>`).join('')}</table>`;
   }
 
-  /* ═══════════ CAMPAÑAS Y HORARIOS ═══════════ */
   function pintarCampanas() {
     const hor = servicio.horarios();
     $('tablaCampanas').innerHTML = `<table class="tb">
