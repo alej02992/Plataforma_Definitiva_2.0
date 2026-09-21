@@ -88,7 +88,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Telefonia', permiso:'softphone',
+  { v:'escritorio', et:'Llamadas', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -123,7 +123,7 @@ const MENU = [
 ];
 
 const TITULOS = {
-  escritorio:'Telefonia', supervision:'Seguimiento de la operación',
+  escritorio:'Llamadas', supervision:'Seguimiento de la operación',
   campanas:'Gestión de campañas', grabaciones:'Grabaciones',
   escucha:'Escucha en línea', reportes:'Reportería',
   disenador:'Diseñador de formularios', admcampanas:'Configuración de campañas',
@@ -219,8 +219,28 @@ telefonia.on('paso6', () => marcarPaso('s6', 'ok', 'Llamada con audio establecid
 telefonia.on('fin', (d) => {
   if (d.contestada) {
     ui.pendiente = { ...d, hora: new Date() };
+
+    /* Si el agente ya tipificó durante la llamada, se registra sin
+       pedirle nada más ni esperar el tiempo de cierre. */
+    if (ui.tipAdelantada) {
+      const t = ui.tipAdelantada;
+      ui.tipAdelantada = null;
+      $('tipCat').value = t.cat;
+      $('tipCat').dispatchEvent(new Event('change'));
+      $('tipSub').value = t.sub;
+      $('tipObs').value = t.obs;
+      $('tipAgenda').checked = t.agenda;
+
+      /* La telefonía avisa "fin" un instante ANTES de pasar a cierre.
+         Si se guardara ya, la línea volvería a disponible y enseguida
+         quedaría atrapada en cierre. Se espera a que termine ese paso. */
+      setTimeout(() => guardarTipificacion(false), 0);
+      return;
+    }
+
     abrirTipificador();
   } else {
+    ui.tipAdelantada = null;      // la llamada no llegó a conectar
     registrarLlamada({ ...d, hora: new Date(), tipificacion: null });
   }
 });
@@ -434,13 +454,27 @@ function guardarTipificacion(porTiempo) {
     aviso('Selecciona un resultado antes de guardar.', 'av-a');
     return;
   }
-  clearInterval(ui.acwId);
   const tip = porTiempo ? null : {
     cat: $('tipCat').value,
     sub: $('tipSub').value,
     obs: $('tipObs').value.trim(),
     agenda: $('tipAgenda').checked,
   };
+
+  /* Tipificación en caliente: el agente guarda mientras la llamada
+     sigue activa. Todavía no existen la hora de cierre ni la duración,
+     así que no se registra nada: se reserva y se aplica sola al colgar.
+     Antes se registraba una llamada vacía y el historial fallaba. */
+  if (!ui.pendiente) {
+    if (!tip) return;
+    ui.tipAdelantada = tip;
+    $('tipTag').className = 't g';
+    $('tipTag').textContent = 'Guardada';
+    aviso('Tipificación guardada. Se registrará al terminar la llamada.', 'av-b');
+    return;
+  }
+
+  clearInterval(ui.acwId);
   registrarLlamada({ ...ui.pendiente, tipificacion: tip });
 
   /* Con backend, la tipificación se envía al servidor. Si falla, la
@@ -471,6 +505,13 @@ function cerrarTipificador() {
 }
 
 /* ═══════════ HISTORIAL ═══════════ */
+/* Hora de una llamada del historial. Tolera registros sin hora en
+   lugar de romper toda la tabla por uno solo. */
+function horaDe(l) {
+  const h = l.hora instanceof Date ? l.hora : new Date(l.hora || NaN);
+  return isNaN(h) ? '—' : h.toLocaleTimeString('es-CO');
+}
+
 function registrarLlamada(ll) {
   ui.llamadas.unshift(ll);
   pintarHistorial();
@@ -492,7 +533,7 @@ function pintarHistorial() {
                      : l.direccion === 'entrante' ? 'ent' : 'sal';
   const etq = (c) => c === 'perd' ? 'Perdida' : c === 'ent' ? 'Entrante' : 'Saliente';
   const dur = (l) => l.contestada
-    ? `${String(Math.floor(l.segundos / 60)).padStart(2, '0')}:${String(l.segundos % 60).padStart(2, '0')}`
+    ? `${String(Math.floor((Number(l.segundos) || 0) / 60)).padStart(2, '0')}:${String((Number(l.segundos) || 0) % 60).padStart(2, '0')}`
     : '—';
   const nom = (l) => (buscarContacto(l.numero)?.nom) || 'No identificado';
   const tip = (l) => l.tipificacion
@@ -504,7 +545,7 @@ function pintarHistorial() {
     ${ui.llamadas.map((l) => {
       const c = clase(l);
       return `<tr>
-        <td class="mono">${l.hora.toLocaleTimeString('es-CO')}</td>
+        <td class="mono">${horaDe(l)}</td>
         <td class="mono">${l.numero || '—'}</td>
         <td>${nom(l)}</td>
         <td><span class="t ${c === 'perd' ? 'r' : c === 'ent' ? 'b' : 'g'}">${etq(c)}</span></td>
