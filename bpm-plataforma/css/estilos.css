@@ -544,3 +544,15 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 /* Etiqueta sobre la descripción de la ficha */
 .ficha-et{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
   color:var(--ink-3);margin-top:12px;margin-bottom:4px}
+
+/* ══════════ ESTADO DEL AGENTE EN LA TARJETA DEL SOFTPHONE ══════════
+   Antes vivía en la barra superior. Al moverlo aquí gana peso visual
+   y queda junto a los controles de llamada, que es donde importa.   */
+.c-h .est{margin:0;font-size:13px;font-weight:700;padding:5px 12px}
+
+/* La cabecera ya no lleva título: se ajusta para no dejar un hueco */
+.top{min-height:46px}
+
+/* Botón de estado personalizado */
+#pzOtro{border-style:dashed}
+#pzOtro.on{border-style:solid}
