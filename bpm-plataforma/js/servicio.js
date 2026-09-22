@@ -24,7 +24,6 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-
 /* ═══════════════════════════════════════════════════════════════
    Los datos de negocio (contactos, catálogo de tipificación y
    marcación rápida) vienen del backend. Aquí solo quedan las
@@ -34,7 +33,6 @@
 
 const DIRECTORIO = [];
 const CATALOGO = {};
-const MARCACION_RAPIDA = {};
 
 const servicio = (() => {
 
@@ -43,10 +41,6 @@ const servicio = (() => {
      Cada persona YA trae su extensión — requisito de la reunión:
      "la persona debe ser equivalente a la extensión que se crea".
      ═════════════════════════════════════════════════════════════════ */
-  /* Los usuarios viven en la base de datos. Sin backend no hay
-     usuarios: la plataforma lo dice con claridad en lugar de dejar
-     entrar a cualquiera. */
-  const USUARIOS = [];
 
   /* ═════════════════════════════════════════════════════════════════
      CAMPAÑAS Y COLAS
@@ -54,8 +48,6 @@ const servicio = (() => {
      decide qué catálogo ve el agente y en qué panel aparece la llamada.
      La extensión de la cola es a donde se transfiere.
      ═════════════════════════════════════════════════════════════════ */
-  /* Las campañas vienen del backend. */
-  const CAMPANAS = [];
 
   /* ═════════════════════════════════════════════════════════════════
      ESTADO EN VIVO (simulado)
@@ -71,12 +63,6 @@ const servicio = (() => {
   const vivo = { agentes: [], colas: [] };
 
   /** Avanza la simulación un segundo. pantalla.js la llama con un intervalo. */
-  /** Antes avanzaba una simulación del estado de la operación.
-      Ahora no hace nada: los datos reales llegarán del backend cuando
-      exista el módulo de eventos en vivo. Se conserva la función para
-      no romper a quien la llama. */
-  function tictac() { /* sin simulación */ }
-
 
   const estadoVivo = () => ({
     agentes: vivo.agentes.map((a) => ({ ...a })),
@@ -88,10 +74,6 @@ const servicio = (() => {
      El administrador y el supervisor los crean; el agente los llena.
      ═════════════════════════════════════════════════════════════════ */
   const CLAVE_FORMS = 'bpm.formularios';
-
-  /* Los formularios los crea el superadministrador desde la
-     plataforma y se guardan en la base. */
-  const FORMULARIOS_BASE = [];
 
   const TIPOS_CAMPO = [
     { id: 'texto',       nombre: 'Texto corto' },
@@ -107,7 +89,7 @@ const servicio = (() => {
       const g = localStorage.getItem(CLAVE_FORMS);
       if (g) return JSON.parse(g);
     } catch { /* modo privado */ }
-    return JSON.parse(JSON.stringify(FORMULARIOS_BASE));
+    return [];
   }
 
   function guardarFormularios(lista) {
@@ -214,15 +196,13 @@ const servicio = (() => {
      "El supervisor puede tomar acciones como cerrar horarios."
      ═════════════════════════════════════════════════════════════════ */
   const CLAVE_HOR = 'bpm.horarios';
-  /* Los horarios son un atributo de cada campaña. */
-  const HORARIOS_BASE = [];
 
   function horarios() {
     try {
       const g = localStorage.getItem(CLAVE_HOR);
       if (g) return JSON.parse(g);
     } catch { /* nada */ }
-    return JSON.parse(JSON.stringify(HORARIOS_BASE));
+    return JSON.parse(JSON.stringify([]));
   }
   function guardarHorarios(l) {
     try { localStorage.setItem(CLAVE_HOR, JSON.stringify(l)); } catch { /* nada */ }
@@ -250,64 +230,34 @@ const servicio = (() => {
     return !!(CONFIG.pbx.wss && CONFIG.pbx.dominio && !CONFIG.simulador);
   }
 
+  /** Inicia sesión contra el backend. La contraseña se valida en el
+      servidor con bcrypt; la plataforma nunca la comprueba por su
+      cuenta ni guarda usuarios propios. */
   async function autenticar(usuario, clave) {
-    /* ── Con backend ── */
-    if (hayApi()) {
-      const d = await api('POST', '/sesion', { usuario, clave });
-      guardarToken(d.token);
-      return { ...d.usuario, usuario: d.usuario.usuario || usuario };
-    }
-
-    /* ── Sin backend ──
-       No hay dónde validar la contraseña, así que no se deja entrar.
-       Antes se aceptaba cualquier clave contra una lista local, y eso
-       no puede ocurrir en una plataforma en uso. */
-    if (!USUARIOS.length) {
+    if (!hayApi()) {
       throw new Error('No hay conexión con el servidor. Avisa al área de tecnología.');
     }
-
-    await demora(350);
-    const u = USUARIOS.find((x) => x.usuario === String(usuario).toLowerCase().trim());
-    if (!u || !clave) throw new Error('Usuario o contraseña incorrectos.');
-    if (!u.activo) throw new Error('Este usuario está inactivo.');
-    return {
-      id: u.usuario, usuario: u.usuario, nombre: u.nombre, rol: u.rol,
-      campana: u.campana, extension: u.extension, clave: u.clave,
-      permisos: permisosDeRol(u.rol),
-    };
+    const d = await api('POST', '/sesion', { usuario, clave });
+    guardarToken(d.token);
+    return { ...d.usuario, usuario: d.usuario.usuario || usuario };
   }
 
-  async function credencialSip(sesion) {
-    /* Con backend, la credencial la emite el servidor: temporal y
-       asociada a la sesión. El navegador nunca ve una clave fija. */
-    if (hayApi()) {
-      const d = await api('POST', '/sesion/sip');
-      if (!d.wss || !d.dominio) throw new Error('SIN_PBX');
-      return { ...d, ext: d.extension || d.ext };
-    }
-
-    await demora(250);
-    const pbx = leerPbx();
-    if (!pbx.wss || !pbx.dominio) throw new Error('SIN_PBX');
-    return {
-      wss: pbx.wss, dominio: pbx.dominio,
-      ext: sesion.extension,
-      clave: pbx.clave || generarClaveTemporal(),
-      ice: pbx.ice,
-      venceEn: 8 * 60 * 60,
-      emitida: new Date(),
-    };
+  /** Credencial telefónica de la sesión. La emite el servidor: es
+      temporal y cambia en cada inicio de sesión, así que copiarla no
+      sirve de nada. */
+  async function credencialSip() {
+    if (!hayApi()) throw new Error('SIN_PBX');
+    const d = await api('POST', '/sesion/sip');
+    if (!d.wss || !d.dominio) throw new Error('SIN_PBX');
+    return { ...d, ext: d.extension || d.ext };
   }
 
+  /** Cierra la sesión en el servidor, que además invalida la
+      credencial telefónica. */
   async function cerrar() {
-    /* Con backend, el servidor invalida la sesión y la credencial SIP.
-       Así, si alguien copió la clave de telefonía, deja de servir. */
-    if (hayApi()) {
-      try { await api('DELETE', '/sesion'); } catch { /* da igual si falla */ }
-      borrarToken();
-      return;
-    }
-    await demora(120);
+    if (!hayApi()) return;
+    try { await api('DELETE', '/sesion'); } catch { /* la sesión local se borra igual */ }
+    borrarToken();
   }
 
   /* ═════════════════════════════════════════════════════════════════
@@ -349,22 +299,10 @@ const servicio = (() => {
     return agente;
   }
 
-  const puede = (sesion, permiso) => !!(sesion && sesion.permisos && sesion.permisos.includes(permiso));
-
   /* ═════════════════════════════════════════════════════════════════
      UTILIDADES
      ═════════════════════════════════════════════════════════════════ */
   const demora = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  /** Solo para la demostración. El backend real usa un generador seguro. */
-  function generarClaveTemporal() {
-    const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let s = '';
-    for (let i = 0; i < 24; i++) s += abc[Math.floor(Math.random() * abc.length)];
-    return s;
-  }
-
-
 
   /* ═══════════════════════════════════════════════════════════════
      ACCESO AL BACKEND
@@ -418,7 +356,6 @@ const servicio = (() => {
     return datos;
   }
 
-
   /* ── Datos que el backend sirve cuando está conectado ──────────
      Todas devuelven lo mismo con o sin backend, así que las
      pantallas no cambian.                                          */
@@ -448,19 +385,6 @@ const servicio = (() => {
       } catch { /* si falla, se usa el local */ }
     }
     return CATALOGO;
-  }
-
-  /** Registra la tipificación de una llamada terminada. */
-  async function guardarTipificacion(datos) {
-    if (hayApi()) {
-      try {
-        await api('POST', '/interacciones/' + encodeURIComponent(datos.linkedid || 'sin-id') + '/tipificar', datos);
-        return { ok: true, enviada: true };
-      } catch (e) {
-        return { ok: true, enviada: false, motivo: e.message };
-      }
-    }
-    return { ok: true, enviada: false };
   }
 
   /** Estado de la operación en este momento, para el supervisor.
@@ -532,7 +456,6 @@ const servicio = (() => {
     }
     return { ok: true };
   }
-
 
   /* ═══════════════════════════════════════════════════════════════
      GESTIÓN DE USUARIOS CONTRA EL BACKEND
@@ -665,12 +588,6 @@ const servicio = (() => {
   /** Abre o cierra la campaña. Sin backend opera sobre los datos
       locales, para que la plataforma siga siendo usable. */
   async function alternarHorario(id) {
-    if (!hayApi()) {
-      const c = CAMPANAS.find((x) => String(x.id) === String(id) || x.nombre === id);
-      if (!c) return { ok: false, error: 'Campaña no encontrada' };
-      c.abierta = !c.abierta;
-      return { ok: true, abierta: c.abierta };
-    }
     try {
       const r = await api('PUT', '/campanas/' + id + '/horario');
       return { ok: true, abierta: r.abierta };
@@ -680,7 +597,6 @@ const servicio = (() => {
   }
 
   /** Lista las grabaciones del servidor, con filtros opcionales. */
-
 
   /** Vuelve a activar un usuario dado de baja. */
   async function reactivarUsuario(id) {
@@ -706,58 +622,24 @@ const servicio = (() => {
      El rol solo define qué se muestra: no hay lógica distinta por
      rol, así que cambiarlo no requiere nada más.                    */
 
-  function cambiarRol(usuario, rol) {
-    const u = USUARIOS.find((x) => x.usuario === usuario);
-    if (!u) return { ok: false, error: 'Usuario no encontrado' };
-    u.rol = rol;
-    return { ok: true };
-  }
-
-  function cambiarCampana(usuario, campana) {
-    const u = USUARIOS.find((x) => x.usuario === usuario);
-    if (!u) return { ok: false, error: 'Usuario no encontrado' };
-    u.campana = campana;
-    return { ok: true };
-  }
-
-  function guardarUsuario(datos) {
-    const existe = USUARIOS.find((x) => x.usuario === datos.usuario);
-
-    // Una extensión no puede compartirse entre dos personas
-    const ext = String(datos.extension || '').trim();
-    if (ext && USUARIOS.some((x) => x.extension === ext && x.usuario !== datos.usuario)) {
-      return { ok: false, error: 'Esa extensión ya está asignada a otro usuario.' };
-    }
-
-    if (existe) {
-      Object.assign(existe, datos);
-    } else {
-      USUARIOS.push({ ...datos, clave: '', activo: true });
-    }
-    return { ok: true };
-  }
-
-  function marcacionRapidaDe(campana) {
-    return MARCACION_RAPIDA[campana] || MARCACION_RAPIDA['Todas'] || [];
-  }
-
   return {
-    autenticar, credencialSip, cerrar, puede,
-    leerPbx, hayPbxConfigurada,
-    estadoVivo, tictac,
-    formularios, guardarFormularios, formulariosDe,
+    autenticar, credencialSip, cerrar, hayPbxConfigurada,
+    estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-    cambiarRol, cambiarCampana, guardarUsuario, marcacionRapidaDe,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
-    hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
+    hayApi, catalogoTipificacion, cambiarMiClave,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
-    guardarTipificacion, registrarPausa,
-    get usuarios()    { return USUARIOS.map((u) => ({ ...u })); },
-    get campanas()    { return CAMPANAS.map((c) => ({ ...c })); },
+    registrarPausa,
+    get usuarios()    { return []; },
+    /* Listas heredadas de cuando había datos locales. Hoy siempre
+       vienen del backend; se conservan vacías mientras las pantallas
+       que aún las consultan se van limpiando. */
+    get campanas()    { return []; },
     get tiposCampo()  { return TIPOS_CAMPO.map((t) => ({ ...t })); },
     get tiposReporte(){ return TIPOS_REPORTE.map((t) => ({ ...t })); },
   };
