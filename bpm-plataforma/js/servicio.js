@@ -176,11 +176,9 @@ const servicio = (() => {
     if (tipo === 'campanas') {
       return {
         columnas: ['Campaña', 'Tipo', 'Activa', 'En espera', 'Atendidas', 'Abandonadas', 'Nivel (%)'],
-        filas: CAMPANAS.map((c) => {
-          const q = v.colas.find((x) => x.campana === c.nombre) || {};
-          return [c.nombre, c.tipo, c.activa ? 'Sí' : 'No',
-                  q.enEspera || 0, q.atendidas || 0, q.abandonadas || 0, q.nivel || 0];
-        }),
+        /* Este reporte se alimentaba de la lista local de campañas.
+           Ahora las campañas viven en la base; lo servirá el backend. */
+        filas: [],
       };
     }
     if (tipo === 'pausas') {
@@ -206,24 +204,6 @@ const servicio = (() => {
   }
   function guardarHorarios(l) {
     try { localStorage.setItem(CLAVE_HOR, JSON.stringify(l)); } catch { /* nada */ }
-  }
-
-  /* ═════════════════════════════════════════════════════════════════
-     CONFIGURACIÓN DE LA CENTRAL
-     En producción esto NO viaja al navegador: lo sabe el backend y lo
-     entrega junto con la credencial.
-     ═════════════════════════════════════════════════════════════════ */
-  /* ── Datos de la central ─────────────────────────────────────
-     Vienen de js/config.js. No se piden al agente ni se guardan en el
-     navegador: en producción los va a entregar el backend junto con la
-     credencial.                                                        */
-  function leerPbx() {
-    return {
-      wss: CONFIG.pbx.wss || '',
-      dominio: CONFIG.pbx.dominio || '',
-      clave: CONFIG.pbx.clave || '',
-      ice: CONFIG.pbx.ice || [],
-    };
   }
 
   function hayPbxConfigurada() {
@@ -258,45 +238,6 @@ const servicio = (() => {
     if (!hayApi()) return;
     try { await api('DELETE', '/sesion'); } catch { /* la sesión local se borra igual */ }
     borrarToken();
-  }
-
-  /* ═════════════════════════════════════════════════════════════════
-     PERMISOS POR ROL
-     El rol solo define QUÉ SE MUESTRA. No hay código distinto por rol,
-     y por eso cambiar a alguien de rol no tiene ninguna complicación.
-     ═════════════════════════════════════════════════════════════════ */
-  function permisosDeRol(rol) {
-    /* AGENTE — vista simplificada y operativa.
-       Sin diseño de encuestas, sin reportería general, sin estado
-       global de colas, sin administración de la PBX. Contactos e
-       historial viven DENTRO del escritorio, no en el menú. */
-    const agente = ['softphone', 'tipificar', 'ficha', 'historial_sesion'];
-
-    /* SUPERVISOR — monitoreo y control de operaciones.
-       Puede intervenir operativamente, pero NO puede borrar campañas
-       ni diseñar formularios. */
-    const supervisor = [...agente,
-      'supervision',      // panel en vivo
-      'horarios',         // cerrar y abrir campañas
-      'distribucion',     // reasignar agentes entre campañas
-      'grabaciones',      // buscador y reproductor
-      'escucha',          // monitoreo en tiempo real
-      'reportes',         // reportería con filtros
-    ];
-
-    /* SUPERADMINISTRADOR Y SOPORTE — herramientas maestras.
-       No requiere softphone para su operación diaria. */
-    const admin = [...supervisor,
-      'disenar_formularios',  // exclusivo del superadmin
-      'campanas',             // creación y eliminación
-      'usuarios',             // usuarios, extensiones y roles
-      'modulos',              // interruptor maestro
-      'telefonia',            // diagnóstico y traza
-    ];
-
-    if (rol === 'admin') return admin;
-    if (rol === 'supervisor') return supervisor;
-    return agente;
   }
 
   /* ═════════════════════════════════════════════════════════════════
@@ -359,17 +300,6 @@ const servicio = (() => {
   /* ── Datos que el backend sirve cuando está conectado ──────────
      Todas devuelven lo mismo con o sin backend, así que las
      pantallas no cambian.                                          */
-
-  /** Busca el contacto por teléfono. Es la consulta de cada llamada
-      entrante: tiene que responder antes de que el agente conteste. */
-  async function contactoPorTelefono(numero) {
-    if (hayApi()) {
-      try { return await api('GET', '/contactos/telefono/' + encodeURIComponent(numero)); }
-      catch { return null; }
-    }
-    const n = String(numero || '').replace(/\D/g, '');
-    return DIRECTORIO.find((c) => c.n.replace(/\D/g, '') === n) || null;
-  }
 
   /** Catálogo de tipificación de la campaña del agente. */
   async function catalogoTipificacion(campana) {
@@ -482,7 +412,7 @@ const servicio = (() => {
         activo: u.activo !== 0 && u.activo !== false,
       }));
     }
-    return USUARIOS.map((u) => ({ ...u }));
+    return [];
   }
 
   const ROL_POR_ID = { 1: 'agente', 2: 'supervisor', 3: 'admin' };
@@ -588,6 +518,7 @@ const servicio = (() => {
   /** Abre o cierra la campaña. Sin backend opera sobre los datos
       locales, para que la plataforma siga siendo usable. */
   async function alternarHorario(id) {
+    if (!hayApi()) return { ok: false, error: 'Requiere conexión con el servidor.' };
     try {
       const r = await api('PUT', '/campanas/' + id + '/horario');
       return { ok: true, abierta: r.abierta };
@@ -614,7 +545,7 @@ const servicio = (() => {
     if (hayApi()) {
       try { return await api('GET', '/campanas'); } catch { /* cae al local */ }
     }
-    return CAMPANAS.map((c) => ({ ...c }));
+    return [];
   }
 
   /* ── Gestión de usuarios ────────────────────────────────────────
@@ -627,7 +558,6 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
