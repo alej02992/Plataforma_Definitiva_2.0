@@ -27,12 +27,6 @@ const administracion = (() => {
     { id:'encuestas',  nom:'Encuestas de salida',  desc:'Encuesta de satisfacción al finalizar la llamada.', on:false },
   ];
 
-  /* Las grabaciones las sirve el backend leyendo la carpeta del
-     servidor de la central. */
-  const GRABACIONES = [];
-
-
-
   /* Se cargan del backend al abrir cada vista */
   let campanas = [];
 
@@ -56,12 +50,12 @@ const administracion = (() => {
     $$('tablaHorarios').innerHTML = `<table class="tb">
       <tr><th>Campaña</th><th>Tipo</th><th>Horario</th><th>Estado</th><th></th></tr>
       ${campanas.map((c) => `<tr>
-        <td><b>${c.nombre}</b></td>
-        <td>${c.tipo}</td>
+        <td><b>${seguro.texto(c.nombre)}</b></td>
+        <td>${seguro.texto(c.tipo)}</td>
         <td class="mono">${(c.hora_apertura||'').slice(0,5)} – ${(c.hora_cierre||'').slice(0,5)}</td>
         <td><span class="t ${c.abierta ? 'g' : 'r'}">${c.abierta ? 'Abierta' : 'Cerrada'}</span></td>
         <td><button class="b ${c.abierta ? 'b-red' : 'b-green'} b-sm"
-              data-hor="${c.id}">${c.abierta ? 'Cerrar' : 'Abrir'}</button></td>
+              data-hor="${seguro.texto(c.id)}">${c.abierta ? 'Cerrar' : 'Abrir'}</button></td>
       </tr>`).join('')}</table>`;
   }
 
@@ -87,9 +81,9 @@ const administracion = (() => {
     const agentes = todos.filter((u) => u.rol === 'agente' && u.activo !== false);
 
     $$('selAgentes').innerHTML = agentes.map((a) =>
-      `<option value="${a.id ?? a.usuario}" data-usuario="${a.usuario}">${a.nombre} · ${a.campana || 'sin campaña'}</option>`).join('');
+      `<option value="${seguro.texto(a.id ?? a.usuario)}" data-usuario="${seguro.texto(a.usuario)}">${seguro.texto(a.nombre)} · ${seguro.texto(a.campana || 'sin campaña')}</option>`).join('');
     $$('selDestino').innerHTML = campanas.map((c) =>
-      `<option value="${c.id}">${c.nombre}</option>`).join('');
+      `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
   }
 
   $$('btnMover')?.addEventListener('click', async () => {
@@ -146,7 +140,7 @@ const administracion = (() => {
     const actual = $$('grabAgente').value;
 
     $$('grabAgente').innerHTML = '<option value="">Selecciona un agente…</option>' +
-      lista.map((a) => `<option value="${a.extension}">${a.agente}</option>`).join('');
+      lista.map((a) => `<option value="${seguro.texto(a.extension)}">${seguro.texto(a.agente)}</option>`).join('');
 
     if (actual) $$('grabAgente').value = actual;   // no se pierde el filtro
   }
@@ -171,7 +165,7 @@ const administracion = (() => {
 
     if (r.error) {
       $$('tablaGrabaciones').innerHTML =
-        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${r.error}</div></div>`;
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(r.error)}</div></div>`;
       $$('grabN').textContent = '0';
       return;
     }
@@ -189,15 +183,15 @@ const administracion = (() => {
     $$('tablaGrabaciones').innerHTML = `<table class="tb">
       <tr><th>Fecha</th><th>Hora</th><th>Agente</th><th>Número</th><th>Tamaño</th><th></th></tr>
       ${grabaciones.map((g) => `<tr${g.vacia ? ' style="opacity:.55"' : ''}>
-        <td class="mono">${g.fecha || '—'}</td>
-        <td class="mono">${g.hora || '—'}</td>
-        <td>${g.agente || '—'}<br><span class="mono" style="font-size:10.5px;color:var(--ink-3)">ext. ${g.extension || '—'}</span></td>
-        <td class="mono">${g.numero || '—'}</td>
+        <td class="mono">${seguro.celda(g.fecha)}</td>
+        <td class="mono">${seguro.celda(g.hora)}</td>
+        <td>${seguro.celda(g.agente)}<br><span class="mono" style="font-size:10.5px;color:var(--ink-3)">ext. ${seguro.celda(g.extension)}</span></td>
+        <td class="mono">${seguro.celda(g.numero)}</td>
         <td class="mono">${tamano(g.bytes)}</td>
         <td style="white-space:nowrap">
           ${g.vacia
             ? '<span class="t o">Sin audio</span>'
-            : `<button class="b b-teal b-sm" data-grab="${g.id}">Escuchar</button>`}
+            : `<button class="b b-teal b-sm" data-grab="${seguro.texto(g.id)}">Escuchar</button>`}
         </td>
       </tr>`).join('')}</table>`;
 
@@ -279,7 +273,7 @@ const administracion = (() => {
   $$('btnDescargarGrab')?.addEventListener('click', () => {
     if (!grabActual) return;
     /* Se abre en una pestaña: el navegador la descarga por su nombre. */
-    window.open(servicio.urlGrabacion(grabActual.id), '_blank');
+    window.open(servicio.urlGrabacion(grabActual.id), '_blank', 'noopener');
   });
 
   /* ═══════════════════════════════════════════════════════════════
@@ -305,9 +299,9 @@ const administracion = (() => {
       : `<table class="tb">
         <tr><th>Agente</th><th>Número</th><th>Campaña</th><th>Duración</th><th></th></tr>
         ${activas.map((a, i) => `<tr>
-          <td><b>${a.agente}</b></td>
-          <td class="mono">${a.numero}</td>
-          <td>${a.campana}</td>
+          <td><b>${seguro.texto(a.agente)}</b></td>
+          <td class="mono">${seguro.texto(a.numero)}</td>
+          <td>${seguro.texto(a.campana)}</td>
           <td class="mono">${duracion(Math.round((Date.now() - a.desde) / 1000))}</td>
           <td><button class="b b-dark b-sm" data-esc="${i}">Escuchar</button></td>
         </tr>`).join('')}</table>`;
@@ -344,7 +338,7 @@ const administracion = (() => {
       campanas = await servicio.listarCampanas();
     } catch (e) {
       $$('listaCampanas').innerHTML =
-        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudieron cargar: ${e.message}</div></div>`;
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudieron cargar: ${seguro.texto(e.message)}</div></div>`;
       return;
     }
     pintarListaCampanas();
@@ -356,10 +350,10 @@ const administracion = (() => {
       return;
     }
     $$('listaCampanas').innerHTML = campanas.map((c) => `
-      <div class="fila-camp" data-camp="${c.id}">
+      <div class="fila-camp" data-camp="${seguro.texto(c.id)}">
         <div class="bd">
-          <b>${c.nombre}</b>
-          <span>${c.tipo}${c.did ? ' · DID ' + c.did : ''} · cola ${c.cola_asterisk || '—'}</span>
+          <b>${seguro.texto(c.nombre)}</b>
+          <span>${seguro.texto(c.tipo)}${c.did ? ' · DID ' + seguro.texto(c.did) : ''} · cola ${seguro.celda(c.cola_asterisk)}</span>
         </div>
         <span class="t ${c.abierta ? 'g' : 'o'}">${c.abierta ? 'Abierta' : 'Cerrada'}</span>
       </div>`).join('');
@@ -369,7 +363,7 @@ const administracion = (() => {
     let fs = [];
     try { fs = servicio.formularios ? servicio.formularios() : []; } catch {}
     $$('campForm').innerHTML = '<option value="">— Sin formulario —</option>' +
-      fs.map((f) => `<option value="${f.id}">${f.nombre}</option>`).join('');
+      fs.map((f) => `<option value="${seguro.texto(f.id)}">${seguro.texto(f.nombre)}</option>`).join('');
   }
 
   $$('listaCampanas')?.addEventListener('click', (e) => {
@@ -523,7 +517,7 @@ const administracion = (() => {
   async function abrirUsuarios() {
     const cs = await servicio.listarCampanas();
     $$('usrCampana').innerHTML = cs.map((c) =>
-      `<option value="${c.id ?? ''}">${c.nombre}</option>`).join('');
+      `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
     await recargarUsuarios();
   }
 
@@ -533,7 +527,7 @@ const administracion = (() => {
       usuarios = await servicio.listarUsuarios();
     } catch (e) {
       $$('tablaUsuarios').innerHTML =
-        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudo cargar la lista: ${e.message}</div></div>`;
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>No se pudo cargar la lista: ${seguro.texto(e.message)}</div></div>`;
       return;
     }
     pintarUsuarios();
@@ -547,24 +541,24 @@ const administracion = (() => {
     $$('tablaUsuarios').innerHTML = `<table class="tb">
       <tr><th>Nombre</th><th>Usuario</th><th>Extensión</th><th>Campaña</th><th>Rol</th><th></th></tr>
       ${usuarios.map((u) => `<tr${u.activo === false ? ' style="opacity:.5"' : ''}>
-        <td><b>${u.nombre}</b>${u.activo === false ? ' <span class="t o">Inactivo</span>' : ''}</td>
-        <td class="mono">${u.usuario}</td>
-        <td class="mono">${u.extension || '—'}</td>
-        <td>${u.campana || '—'}</td>
+        <td><b>${seguro.texto(u.nombre)}</b>${u.activo === false ? ' <span class="t o">Inactivo</span>' : ''}</td>
+        <td class="mono">${seguro.texto(u.usuario)}</td>
+        <td class="mono">${seguro.celda(u.extension)}</td>
+        <td>${seguro.celda(u.campana)}</td>
         <td>
-          <div class="roles" data-usuario="${u.usuario}" data-id="${u.id ?? ''}">
+          <div class="roles" data-usuario="${seguro.texto(u.usuario)}" data-id="${seguro.texto(u.id)}">
             ${Object.keys(ROL_ET).map((r) =>
               `<button class="rol-b ${u.rol === r ? 'on' : ''}" data-rol="${r}">${ROL_ET[r]}</button>`).join('')}
           </div>
         </td>
         <td style="white-space:nowrap">
-          <button class="b b-gh b-sm" data-editar="${u.usuario}">Editar</button>
-          <button class="b b-gh b-sm" data-rest="${u.id ?? ''}" title="Devolver a la contraseña temporal">Restablecer</button>
+          <button class="b b-gh b-sm" data-editar="${seguro.texto(u.usuario)}">Editar</button>
+          <button class="b b-gh b-sm" data-rest="${seguro.texto(u.id)}" title="Devolver a la contraseña temporal">Restablecer</button>
           ${u.activo === false
-            ? `<button class="b b-green b-sm" data-activar="${u.id ?? ''}">Reactivar</button>`
+            ? `<button class="b b-green b-sm" data-activar="${seguro.texto(u.id)}">Reactivar</button>`
             : (u.usuario === ui.sesion?.usuario
                 ? ''
-                : `<button class="b b-red b-sm" data-baja="${u.id ?? ''}" title="El usuario deja de entrar; su historial se conserva">Eliminar</button>`)}
+                : `<button class="b b-red b-sm" data-baja="${seguro.texto(u.id)}" title="El usuario deja de entrar; su historial se conserva">Eliminar</button>`)}
         </td>
       </tr>`).join('')}</table>`;
   }
