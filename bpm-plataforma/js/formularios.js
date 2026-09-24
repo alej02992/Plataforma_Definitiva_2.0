@@ -1,348 +1,329 @@
 /* ═══════════════════════════════════════════════════════════════════
-   BPM CONSULTING — FORMULARIOS
+   FORMULARIOS
 
-   Dos caras del mismo módulo:
+   Los diseña el administrador y los llenan los agentes durante la
+   llamada. Viven en la base de datos, no en el navegador: así el
+   administrador puede trabajar desde cualquier equipo y las respuestas
+   quedan disponibles para los reportes.
 
-     LADO AGENTE      llena el formulario de su campaña. Si el servidor
-                      no responde, la respuesta queda en una cola local
-                      y se reintenta. Es el requisito de
-                      "formularios offline".
+   CAMPOS FIJOS
+   Todo formulario nace con los diez datos del contacto. No se pueden
+   borrar ni renombrar, y el agente los llena en cada gestión. Se
+   guardan con la respuesta, así que cada llamada conserva los datos tal
+   como estaban en ese momento: si el cliente cambia de teléfono, la
+   gestión anterior mantiene el que se usó entonces.
 
-     LADO SUPERVISOR  crea y edita formularios: nombre, campaña y campos.
-                      Es el requisito de "un panel donde yo pueda crear
-                      formularios".
-
-   Los datos salen de servicio.js. Cuando exista el backend, cambia
-   servicio.js y este archivo no se toca.
+   UBICACIONES
+   País, departamento y ciudad salen del catálogo. Para Colombia, la
+   ciudad depende del departamento elegido. Para otros países se
+   escriben a mano, porque no tenemos sus divisiones cargadas.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const formularios = (() => {
+const express = require('express');
+const bd = require('../bd');
+const auth = require('../auth');
 
-  let formActual = null;    // formulario que está llenando el agente
-  let editando = null;      // formulario abierto en el diseñador
+const router = express.Router();
 
-  /* ═══════════════════════════════════════════════════════════════
-     LADO AGENTE
-     ═══════════════════════════════════════════════════════════════ */
+/* ═══════════ LOS DIEZ CAMPOS DEL CONTACTO ═══════════ */
 
-  function abrirAgente() {
-    const campana = ui.sesion?.campana || '—';
-    $('formCampana').textContent = campana;
+const CAMPOS_FIJOS = [
+  { clave: 'nombre_contacto', etiqueta: 'Nombre del contacto', tipo: 'texto',
+    requerido: true,  ayuda: 'Nombre completo de quien está en la llamada' },
+  { clave: 'telefono_1',      etiqueta: 'Teléfono 1',          tipo: 'telefono',
+    requerido: true,  ayuda: 'Celular de 10 dígitos o fijo con indicativo' },
+  { clave: 'telefono_2',      etiqueta: 'Teléfono 2',          tipo: 'telefono',
+    requerido: false, ayuda: 'Opcional' },
+  { clave: 'correo',          etiqueta: 'Correo',              tipo: 'correo',
+    requerido: false, ayuda: '' },
+  { clave: 'tipo_documento',  etiqueta: 'Tipo de documento',   tipo: 'lista',
+    requerido: true,  opciones: 'CC,CE,TI,NIT,PA,PPT,RC', ayuda: '' },
+  { clave: 'numero_documento', etiqueta: 'Número de documento', tipo: 'texto',
+    requerido: true,  ayuda: 'Sin puntos ni espacios' },
+  { clave: 'direccion',       etiqueta: 'Dirección',           tipo: 'texto',
+    requerido: false, ayuda: '' },
+  { clave: 'pais',            etiqueta: 'País',                tipo: 'pais',
+    requerido: true,  ayuda: '' },
+  { clave: 'departamento',    etiqueta: 'Departamento',        tipo: 'departamento',
+    requerido: false, ayuda: 'Se despliega al elegir Colombia' },
+  { clave: 'ciudad',          etiqueta: 'Ciudad',              tipo: 'ciudad',
+    requerido: true,  ayuda: 'En Colombia depende del departamento' },
+];
 
-    const lista = servicio.formulariosDe(campana);
-    $('selForm').innerHTML = '<option value="">Selecciona…</option>' +
-      lista.map((f) => `<option value="${f.id}">${f.nombre}</option>`).join('');
-
-    if (!lista.length) {
-      $('formCampos').innerHTML =
-        '<div class="vacio">No hay formularios activos para tu campaña.</div>';
-    }
-
-    // Si hay una llamada en curso, el número se llena solo
-    if (telefonia.numero) $('formNum').value = telefonia.numero;
-
-    pintarPendientes();
+/** Inserta los campos fijos en un formulario recién creado. */
+async function crearCamposFijos(cx, formularioId) {
+  for (let i = 0; i < CAMPOS_FIJOS.length; i++) {
+    const c = CAMPOS_FIJOS[i];
+    await cx.execute(
+      `INSERT INTO formulario_campo
+         (formulario_id, clave, etiqueta, tipo, opciones, requerido, fijo, orden, ayuda)
+       VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
+      [formularioId, c.clave, c.etiqueta, c.tipo, c.opciones || null,
+       !!c.requerido, i, c.ayuda || null]
+    );
   }
+}
 
-  $('selForm').addEventListener('change', () => {
-    const id = $('selForm').value;
-    formActual = servicio.formularios().find((f) => f.id === id) || null;
-    pintarCampos();
-  });
+/* ═══════════ CATÁLOGO DE UBICACIONES ═══════════ */
 
-  /** Dibuja los campos del formulario elegido. */
-  function pintarCampos() {
-    if (!formActual) {
-      $('formCampos').innerHTML = '<div class="vacio">Selecciona un formulario.</div>';
-      $('btnFormGuardar').style.display = 'none';
-      return;
+router.get('/ubicaciones/paises', auth.exigirSesion, async (req, res, next) => {
+  try {
+    res.json(await bd.consultar(
+      'SELECT codigo, nombre, tiene_divisiones FROM pais ORDER BY orden, nombre'));
+  } catch (e) { next(e); }
+});
+
+router.get('/ubicaciones/departamentos', auth.exigirSesion, async (req, res, next) => {
+  try {
+    res.json(await bd.consultar(
+      'SELECT codigo, nombre FROM departamento WHERE pais_codigo = ? ORDER BY nombre',
+      [req.query.pais || 'CO']));
+  } catch (e) { next(e); }
+});
+
+router.get('/ubicaciones/municipios', auth.exigirSesion, async (req, res, next) => {
+  try {
+    const dep = req.query.departamento;
+    if (!dep) return res.status(400).json({ error: 'Falta el departamento' });
+    res.json(await bd.consultar(
+      'SELECT codigo, nombre FROM municipio WHERE departamento_codigo = ? ORDER BY nombre',
+      [dep]));
+  } catch (e) { next(e); }
+});
+
+/* ═══════════ LISTAR Y LEER ═══════════ */
+
+/* Cualquier usuario con sesión puede listarlos: el agente necesita
+   saber cuál le corresponde a su campaña. */
+router.get('/formularios', auth.exigirSesion, async (req, res, next) => {
+  try {
+    const cond = ['f.activo = TRUE'];
+    const val = [];
+    if (req.query.campana) {
+      cond.push('(f.campana_id = ? OR f.campana_id IS NULL)');
+      val.push(Number(req.query.campana));
     }
+    res.json(await bd.consultar(
+      `SELECT f.id, f.nombre, f.campana_id, c.nombre AS campana, f.creado,
+              (SELECT COUNT(*) FROM formulario_campo fc WHERE fc.formulario_id = f.id) AS campos
+         FROM formulario f
+         LEFT JOIN campana c ON c.id = f.campana_id
+        WHERE ${cond.join(' AND ')}
+        ORDER BY f.nombre`, val));
+  } catch (e) { next(e); }
+});
 
-    $('formCampos').innerHTML = formActual.campos.map((c, i) => {
-      const req = c.requerido ? ' <i>*</i>' : '';
-      const id = 'cf' + i;
-      let control;
+router.get('/formularios/:id', auth.exigirSesion, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const f = await bd.una(
+      `SELECT f.id, f.nombre, f.campana_id, c.nombre AS campana, f.activo
+         FROM formulario f LEFT JOIN campana c ON c.id = f.campana_id
+        WHERE f.id = ?`, [id]);
+    if (!f) return res.status(404).json({ error: 'El formulario no existe' });
 
-      switch (c.tipo) {
-        case 'texto':
-          control = `<input class="fi" id="${id}" data-campo="${c.etiqueta}" autocomplete="off">`;
-          break;
-        case 'numero':
-          control = `<input class="fi mono" id="${id}" type="number" data-campo="${c.etiqueta}">`;
-          break;
-        case 'fecha':
-          control = `<input class="fi" id="${id}" type="date" data-campo="${c.etiqueta}">`;
-          break;
-        case 'lista':
-          control = `<select class="fi" id="${id}" data-campo="${c.etiqueta}">` +
-            '<option value="">Selecciona…</option>' +
-            (c.opciones || []).map((o) => `<option>${o}</option>`).join('') + '</select>';
-          break;
-        case 'si_no':
-          control = `<select class="fi" id="${id}" data-campo="${c.etiqueta}">` +
-            '<option value="">Selecciona…</option><option>Sí</option><option>No</option></select>';
-          break;
-        case 'parrafo':
-          control = `<textarea class="fi" id="${id}" data-campo="${c.etiqueta}"></textarea>`;
-          break;
-        default:
-          control = `<input class="fi" id="${id}" data-campo="${c.etiqueta}">`;
-      }
-      return `<div class="f"><label>${c.etiqueta}${req}</label>${control}</div>`;
-    }).join('');
-
-    $('btnFormGuardar').style.display = '';
-  }
-
-  /** Recoge lo escrito y lo encola. */
-  $('btnFormGuardar').addEventListener('click', () => {
-    if (!formActual) return;
-
-    const numero = $('formNum').value.trim();
-    if (!numero) { aviso('Escribe el número del contacto.', 'av-a'); return; }
-
-    const datos = {};
-    let falta = null;
-
-    formActual.campos.forEach((c, i) => {
-      const el = $('cf' + i);
-      const v = el ? String(el.value).trim() : '';
-      if (c.requerido && !v && !falta) falta = c.etiqueta;
-      datos[c.etiqueta] = v;
+    f.campos = await bd.consultar(
+      `SELECT id, clave, etiqueta, tipo, opciones, requerido, fijo, orden, ayuda
+         FROM formulario_campo WHERE formulario_id = ? ORDER BY orden, id`, [id]);
+    f.campos.forEach((c) => {
+      c.requerido = !!c.requerido;
+      c.fijo = !!c.fijo;
+      c.opciones = c.opciones ? c.opciones.split(',').map((o) => o.trim()) : [];
     });
+    res.json(f);
+  } catch (e) { next(e); }
+});
 
-    if (falta) { aviso(`El campo "${falta}" es obligatorio.`, 'av-a'); return; }
+/* ═══════════ CREAR, MODIFICAR Y DESACTIVAR ═══════════ */
 
-    servicio.encolarRespuesta({
-      formularioId: formActual.id,
-      formulario: formActual.nombre,
-      campana: formActual.campana,
-      agente: ui.sesion?.nombre || '—',
-      numero, datos,
-    });
-
-    aviso(hayServidor()
-      ? 'Respuesta enviada.'
-      : 'Respuesta guardada. Se envía en cuanto haya conexión con el servidor.', 'av-b');
-    pintarCampos();          // limpia los campos
-    $('formNum').value = '';
-    pintarPendientes();
-    intentarSincronizar();
-  });
-
-  /* ── La cola de pendientes ─────────────────────────────────────── */
-
-  function pintarPendientes() {
-    const lista = servicio.pendientes();
-    $('pendN').textContent = lista.length;
-    $('pendN').className = 't ' + (lista.length ? 'a' : 'o');
-
-    if (!lista.length) {
-      $('listaPend').innerHTML = '<div class="vacio">No hay respuestas pendientes.</div>';
-      return;
-    }
-
-    $('listaPend').innerHTML = lista.map((p) => `
-      <div class="pend">
-        <div class="pend-h">
-          <b>${p.formulario}</b>
-          <span class="t ${p.intentos ? 'r' : 'a'}">${p.intentos ? 'Falló ' + p.intentos + '×' : 'Pendiente'}</span>
-        </div>
-        <span class="pend-m">${p.numero} · ${new Date(p.creada).toLocaleTimeString('es-CO')}</span>
-      </div>`).join('');
-  }
-
-  /* El servicio lanza una excepción cuando no hay conexión. Es el caso
-     normal en un formulario offline, no un error: se captura y se
-     informa sin romper nada. */
-  /* Hay conexión si el backend está configurado en js/config.js.
-     Mientras no lo esté, las respuestas se acumulan en la cola. */
-  const hayServidor = () => !!CONFIG.api;
-
-  async function intentarSincronizar() {
+router.post('/formularios', auth.exigirSesion, auth.exigir('disenar_formularios'),
+  async (req, res, next) => {
     try {
-      const r = await servicio.sincronizar(hayServidor());
-      pintarPendientes();
-      return { ...r, fallidas: 0 };
-    } catch (e) {
-      pintarPendientes();
-      return { enviadas: 0, fallidas: servicio.pendientes().length, motivo: e.message };
-    }
+      const nombre = String(req.body.nombre || '').trim();
+      if (nombre.length < 3) {
+        return res.status(400).json({ error: 'El formulario necesita un nombre' });
+      }
+
+      const r = await bd.transaccion(async (cx) => {
+        const [ins] = await cx.execute(
+          'INSERT INTO formulario (nombre, campana_id, creado_por) VALUES (?, ?, ?)',
+          [nombre, req.body.campana_id || null, req.usuario.id]);
+        await crearCamposFijos(cx, ins.insertId);
+        return { id: ins.insertId };
+      });
+
+      await auth.auditar(req.usuario.id, 'crear', 'formulario', r.id,
+        `Creó el formulario ${nombre}`, req.ip);
+      res.status(201).json({ id: r.id, campos: CAMPOS_FIJOS.length });
+    } catch (e) { next(e); }
+  });
+
+/* Cambia el nombre, la campaña y los campos AÑADIDOS. Los campos fijos
+   no se tocan: llegan o no llegan, se conservan igual. */
+router.put('/formularios/:id', auth.exigirSesion, auth.exigir('disenar_formularios'),
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      const f = await bd.una('SELECT nombre FROM formulario WHERE id = ?', [id]);
+      if (!f) return res.status(404).json({ error: 'El formulario no existe' });
+
+      const { nombre, campana_id, campos } = req.body;
+
+      await bd.transaccion(async (cx) => {
+        if (nombre !== undefined || campana_id !== undefined) {
+          await cx.execute(
+            'UPDATE formulario SET nombre = COALESCE(?, nombre), campana_id = ? WHERE id = ?',
+            [nombre ? String(nombre).trim() : null, campana_id || null, id]);
+        }
+
+        if (Array.isArray(campos)) {
+          /* Se reemplazan solo los campos propios del formulario. Los
+             fijos quedan intactos: son obligatorios por definición. */
+          await cx.execute(
+            'DELETE FROM formulario_campo WHERE formulario_id = ? AND fijo = FALSE', [id]);
+
+          const [[{ tope }]] = await cx.execute(
+            'SELECT IFNULL(MAX(orden), 0) AS tope FROM formulario_campo WHERE formulario_id = ?',
+            [id]);
+
+          for (let i = 0; i < campos.length; i++) {
+            const c = campos[i];
+            const etiqueta = String(c.etiqueta || '').trim();
+            if (!etiqueta) continue;
+            await cx.execute(
+              `INSERT INTO formulario_campo
+                 (formulario_id, clave, etiqueta, tipo, opciones, requerido, fijo, orden, ayuda)
+               VALUES (?, NULL, ?, ?, ?, ?, FALSE, ?, ?)`,
+              [id, etiqueta.slice(0, 120), c.tipo || 'texto',
+               Array.isArray(c.opciones) ? c.opciones.join(',') : (c.opciones || null),
+               !!c.requerido, tope + 1 + i, (c.ayuda || '').slice(0, 160) || null]);
+          }
+        }
+      });
+
+      await auth.auditar(req.usuario.id, 'modificar', 'formulario', id,
+        `Modificó el formulario ${f.nombre}`, req.ip);
+      res.json({ ok: true });
+    } catch (e) { next(e); }
+  });
+
+/* No se elimina: las respuestas ya guardadas deben conservarse. */
+router.delete('/formularios/:id', auth.exigirSesion, auth.exigir('disenar_formularios'),
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      const f = await bd.una('SELECT nombre FROM formulario WHERE id = ?', [id]);
+      if (!f) return res.status(404).json({ error: 'El formulario no existe' });
+
+      await bd.consultar('UPDATE formulario SET activo = FALSE WHERE id = ?', [id]);
+      await auth.auditar(req.usuario.id, 'eliminar', 'formulario', id,
+        `Desactivó el formulario ${f.nombre}`, req.ip);
+      res.json({ ok: true });
+    } catch (e) { next(e); }
+  });
+
+/* ═══════════ RESPUESTAS ═══════════ */
+
+const SOLO_DIGITOS = /^[0-9]{7,15}$/;
+const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Comprueba el valor contra el tipo del campo. Devuelve el texto del
+    error, o null si está bien. Lo mismo que valida la pantalla, pero
+    aquí es donde cuenta: el navegador se puede saltar. */
+function revisar(campo, valor) {
+  const v = String(valor ?? '').trim();
+
+  if (campo.requerido && !v) return `${campo.etiqueta} es obligatorio`;
+  if (!v) return null;
+
+  if (campo.tipo === 'telefono' && !SOLO_DIGITOS.test(v.replace(/[\s()-]/g, ''))) {
+    return `${campo.etiqueta} debe ser un número de 7 a 15 dígitos`;
   }
-
-  $('btnSincronizar').addEventListener('click', async () => {
-    const b = $('btnSincronizar');
-    b.disabled = true; b.textContent = 'Enviando…';
-    const r = await intentarSincronizar();
-    b.disabled = false; b.textContent = 'Enviar pendientes';
-
-    if (r.enviadas) aviso(`${r.enviadas} respuesta(s) enviada(s) al servidor.`, 'av-b');
-    else if (r.fallidas) aviso(r.motivo || 'Sin conexión. Las respuestas siguen guardadas.', 'av-a');
-    else aviso('No había nada pendiente.', 'av-b');
-  });
-
-  /* ═══════════════════════════════════════════════════════════════
-     LADO SUPERVISOR — el diseñador
-     ═══════════════════════════════════════════════════════════════ */
-
-  function abrirDisenador() {
-    llenarCampanasEditor();
-    pintarLista();
+  if (campo.tipo === 'correo' && !CORREO.test(v)) {
+    return `${campo.etiqueta} no parece un correo válido`;
   }
-
-  function llenarCampanasEditor() {
-    if ($('edCampana').options.length) return;
-    $('edCampana').innerHTML = '<option value="Todas">Todas las campañas</option>' +
-      servicio.campanas.map((c) => `<option>${c.nombre}</option>`).join('');
+  if (campo.tipo === 'numero' && isNaN(Number(v))) {
+    return `${campo.etiqueta} debe ser un número`;
   }
-
-  function pintarLista() {
-    const lista = servicio.formularios();
-    if (!lista.length) {
-      $('listaForms').innerHTML = '<div class="vacio">Todavía no hay formularios.</div>';
-      return;
-    }
-    $('listaForms').innerHTML = lista.map((f) => `
-      <div class="fila-form" data-id="${f.id}">
-        <div class="bd">
-          <b>${f.nombre}</b>
-          <span>${f.campana} · ${f.campos.length} campo(s)</span>
-        </div>
-        <span class="t ${f.activo ? 'g' : 'o'}">${f.activo ? 'Activo' : 'Inactivo'}</span>
-      </div>`).join('');
+  if (campo.tipo === 'lista' && campo.opciones) {
+    const ops = campo.opciones.split(',').map((o) => o.trim());
+    if (!ops.includes(v)) return `${campo.etiqueta}: "${v}" no está entre las opciones`;
   }
+  if (v.length > 2000) return `${campo.etiqueta} es demasiado largo`;
+  return null;
+}
 
-  $('listaForms').addEventListener('click', (e) => {
-    const fila = e.target.closest('.fila-form');
-    if (!fila) return;
-    const f = servicio.formularios().find((x) => x.id === fila.dataset.id);
-    if (f) editar(JSON.parse(JSON.stringify(f)));
+router.post('/formularios/:id/respuestas', auth.exigirSesion, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const valores = req.body.valores || {};
+
+    const campos = await bd.consultar(
+      'SELECT id, clave, etiqueta, tipo, opciones, requerido FROM formulario_campo WHERE formulario_id = ?',
+      [id]);
+    if (!campos.length) return res.status(404).json({ error: 'El formulario no existe' });
+
+    /* Se valida todo antes de guardar nada: o entra completa o no entra. */
+    const errores = [];
+    campos.forEach((c) => {
+      const e = revisar(c, valores[c.id] ?? valores[c.clave]);
+      if (e) errores.push(e);
+    });
+    if (errores.length) return res.status(400).json({ error: errores[0], errores });
+
+    const creada = req.body.creada ? new Date(req.body.creada) : new Date();
+
+    const r = await bd.transaccion(async (cx) => {
+      const [ins] = await cx.execute(
+        `INSERT INTO formulario_respuesta
+           (formulario_id, usuario_id, numero, creada)
+         VALUES (?, ?, ?, ?)`,
+        [id, req.usuario.id, (req.body.numero || '').slice(0, 30) || null,
+         isNaN(creada) ? new Date() : creada]);
+
+      for (const c of campos) {
+        const v = valores[c.id] ?? valores[c.clave];
+        if (v === undefined || v === null || String(v).trim() === '') continue;
+        await cx.execute(
+          'INSERT INTO formulario_valor (respuesta_id, campo_id, valor) VALUES (?, ?, ?)',
+          [ins.insertId, c.id, String(v).trim()]);
+      }
+      return { id: ins.insertId };
+    });
+
+    res.status(201).json({ ok: true, id: r.id });
+  } catch (e) { next(e); }
+});
+
+/* Respuestas guardadas, para consulta y reportes. */
+router.get('/formularios/:id/respuestas', auth.exigirSesion, auth.exigir('reportes'),
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      const filas = await bd.consultar(
+        `SELECT r.id, r.creada, r.numero, u.nombre AS agente,
+                fc.clave, fc.etiqueta, v.valor
+           FROM formulario_respuesta r
+           LEFT JOIN usuario u ON u.id = r.usuario_id
+           LEFT JOIN formulario_valor v ON v.respuesta_id = r.id
+           LEFT JOIN formulario_campo fc ON fc.id = v.campo_id
+          WHERE r.formulario_id = ?
+          ORDER BY r.creada DESC, fc.orden
+          LIMIT 5000`, [id]);
+
+      /* Las filas vienen por valor; se agrupan por respuesta. */
+      const mapa = new Map();
+      filas.forEach((f) => {
+        if (!mapa.has(f.id)) {
+          mapa.set(f.id, { id: f.id, creada: f.creada, numero: f.numero,
+                           agente: f.agente || '—', valores: {} });
+        }
+        if (f.etiqueta) mapa.get(f.id).valores[f.clave || f.etiqueta] = f.valor;
+      });
+
+      res.json({ total: mapa.size, respuestas: [...mapa.values()] });
+    } catch (e) { next(e); }
   });
 
-  $('btnFormNuevo').addEventListener('click', () => {
-    editar({ id: 'f' + Date.now(), nombre: '', campana: 'Todas', activo: true, campos: [] });
-  });
-
-  function editar(f) {
-    editando = f;
-    llenarCampanasEditor();
-    $('editorForm').style.display = '';
-    $('edTitulo').textContent = f.nombre || 'Nuevo formulario';
-    $('edNombre').value = f.nombre;
-    $('edCampana').value = f.campana;
-    $('edActivo').checked = f.activo;
-    $('btnFormBorrar').style.display = servicio.formularios().some((x) => x.id === f.id) ? '' : 'none';
-    pintarCamposEditor();
-  }
-
-  /** Los campos del formulario en edición, con sus controles. */
-  function pintarCamposEditor() {
-    if (!editando.campos.length) {
-      $('edCampos').innerHTML = '<div class="vacio">Sin campos. Añade el primero.</div>';
-      return;
-    }
-    const tipos = servicio.tiposCampo;
-
-    $('edCampos').innerHTML = editando.campos.map((c, i) => `
-      <div class="campo" data-i="${i}">
-        <div class="campo-h">
-          <span class="campo-n">${i + 1}</span>
-          <input class="fi campo-et" data-k="etiqueta" value="${(c.etiqueta || '').replace(/"/g, '&quot;')}" placeholder="Nombre del campo">
-          <select class="fi campo-tp" data-k="tipo">
-            ${tipos.map((t) => `<option value="${t.id}"${t.id === c.tipo ? ' selected' : ''}>${t.et}</option>`).join('')}
-          </select>
-          <button class="campo-b" data-a="subir"  title="Subir">↑</button>
-          <button class="campo-b" data-a="bajar"  title="Bajar">↓</button>
-          <button class="campo-b del" data-a="quitar" title="Quitar">×</button>
-        </div>
-        <div class="campo-f">
-          <label class="chk"><input type="checkbox" data-k="requerido"${c.requerido ? ' checked' : ''}> Obligatorio</label>
-          ${c.tipo === 'lista'
-            ? `<input class="fi campo-op" data-k="opciones" value="${(c.opciones || []).join(', ')}" placeholder="Opciones separadas por coma">`
-            : ''}
-        </div>
-      </div>`).join('');
-  }
-
-  /* Un solo oyente para todos los campos: lee data-i y data-k */
-  $('edCampos').addEventListener('input', (e) => {
-    const fila = e.target.closest('.campo');
-    if (!fila) return;
-    const i = Number(fila.dataset.i);
-    const k = e.target.dataset.k;
-    if (!k) return;
-
-    if (k === 'requerido') editando.campos[i].requerido = e.target.checked;
-    else if (k === 'opciones') {
-      editando.campos[i].opciones = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
-    } else editando.campos[i][k] = e.target.value;
-
-    // Cambiar a tipo lista hace aparecer el campo de opciones
-    if (k === 'tipo') pintarCamposEditor();
-  });
-
-  $('edCampos').addEventListener('change', (e) => {
-    if (e.target.dataset.k === 'requerido') {
-      const fila = e.target.closest('.campo');
-      editando.campos[Number(fila.dataset.i)].requerido = e.target.checked;
-    }
-  });
-
-  $('edCampos').addEventListener('click', (e) => {
-    const b = e.target.closest('.campo-b');
-    if (!b) return;
-    const i = Number(b.closest('.campo').dataset.i);
-    const cs = editando.campos;
-
-    if (b.dataset.a === 'quitar') cs.splice(i, 1);
-    if (b.dataset.a === 'subir' && i > 0) [cs[i - 1], cs[i]] = [cs[i], cs[i - 1]];
-    if (b.dataset.a === 'bajar' && i < cs.length - 1) [cs[i + 1], cs[i]] = [cs[i], cs[i + 1]];
-
-    pintarCamposEditor();
-  });
-
-  $('btnCampoNuevo').addEventListener('click', () => {
-    editando.campos.push({ etiqueta: '', tipo: 'texto', requerido: false });
-    pintarCamposEditor();
-  });
-
-  $('btnFormSave').addEventListener('click', () => {
-    editando.nombre = $('edNombre').value.trim();
-    editando.campana = $('edCampana').value;
-    editando.activo = $('edActivo').checked;
-
-    if (!editando.nombre) { aviso('El formulario necesita un nombre.', 'av-a'); return; }
-    if (!editando.campos.length) { aviso('Añade al menos un campo.', 'av-a'); return; }
-    const sinEtiqueta = editando.campos.findIndex((c) => !String(c.etiqueta).trim());
-    if (sinEtiqueta >= 0) {
-      aviso(`El campo ${sinEtiqueta + 1} no tiene nombre.`, 'av-a'); return;
-    }
-
-    const lista = servicio.formularios();
-    const i = lista.findIndex((f) => f.id === editando.id);
-    if (i >= 0) lista[i] = editando; else lista.push(editando);
-
-    servicio.guardarFormularios(lista);
-    pintarLista();
-    $('editorForm').style.display = 'none';
-    editando = null;
-    aviso('Formulario guardado. El agente lo ve al recargar su pantalla.', 'av-b');
-  });
-
-  $('btnFormCancel').addEventListener('click', () => {
-    $('editorForm').style.display = 'none';
-    editando = null;
-  });
-
-  $('btnFormBorrar').addEventListener('click', () => {
-    if (!editando) return;
-    servicio.guardarFormularios(servicio.formularios().filter((f) => f.id !== editando.id));
-    pintarLista();
-    $('editorForm').style.display = 'none';
-    editando = null;
-    aviso('Formulario eliminado.', 'av-b');
-  });
-
-  return { abrirAgente, abrirDisenador, pintarPendientes };
-})();
+module.exports = router;

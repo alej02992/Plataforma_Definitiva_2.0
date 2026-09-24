@@ -1,4 +1,3 @@
-
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -23,7 +22,7 @@ function log(txt, tipo = 'info') {
   const t = new Date();
   const ts = [t.getHours(), t.getMinutes(), t.getSeconds()]
     .map((x) => String(x).padStart(2, '0')).join(':');
-  l.innerHTML = `<span class="ts">${ts}</span><span class="tx tx-${tipo}"></span>`;
+  l.innerHTML = `<span class="ts">${ts}</span><span class="tx tx-${seguro.texto(tipo)}"></span>`;
   l.querySelector('.tx').textContent = txt;
   caja.appendChild(l);
   if (caja.children.length > 500) caja.removeChild(caja.firstChild);
@@ -88,7 +87,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Telefonía', permiso:'softphone',
+  { v:'escritorio', et:'Llamadas', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -121,15 +120,6 @@ const MENU = [
   { v:'audio', et:'Audio', permiso:'softphone', oculto:true,
     icono:'<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>' },
 ];
-
-const TITULOS = {
-  escritorio:'Telefonía', supervision:'Seguimiento de la operación',
-  campanas:'Gestión de campañas', grabaciones:'Grabaciones',
-  escucha:'Escucha en línea', reportes:'Reportería',
-  disenador:'Diseñador de formularios', admcampanas:'Configuración de campañas',
-  usuarios:'Usuarios y roles', modulos:'Módulos del sistema',
-  diag:'Diagnóstico', traza:'Traza SIP', audio:'Audio',
-};
 
 /** Arma la barra lateral según los permisos del usuario. */
 function construirMenu(sesion) {
@@ -183,7 +173,25 @@ function irA(vista) {
 
 /* ═══════════ ESTADO DEL SOFTPHONE ═══════════ */
 telefonia.on('traza', (d) => log(d.txt, d.tipo));
-telefonia.on('error', (m) => aviso(m, 'av-r'));
+/* Los errores de la central llegan con el texto que devuelve SIP.js,
+   en inglés y sin contexto. El más frecuente es el del micrófono
+   bloqueado, que aparece justo al marcar: se traduce y se vuelve a
+   mostrar el recuadro con el paso para resolverlo. */
+telefonia.on('error', (m) => {
+  const texto = String(m || '');
+
+  if (/permission denied|notallowed/i.test(texto)) {
+    aviso('El navegador bloqueó el micrófono: sin él no se puede llamar.', 'av-r');
+    comprobarMicrofono();
+    return;
+  }
+  if (/notfound|no hay micr/i.test(texto)) {
+    aviso('No se detecta ningún micrófono conectado.', 'av-r');
+    comprobarMicrofono();
+    return;
+  }
+  aviso(texto, 'av-r');
+});
 telefonia.on('progreso', (m) => { $('panSm').textContent = m; });
 
 telefonia.on('registro', (d) => {
@@ -346,7 +354,7 @@ function mostrarFicha(numero) {
     $('ficha').innerHTML = `
       <div class="fi-h">
         <div class="fi-av" style="background:var(--off)">?</div>
-        <div><b>Contacto no registrado</b><span>${numero || ''}</span></div>
+        <div><b>Contacto no registrado</b><span>${seguro.texto(numero)}</span></div>
       </div>
       <div class="aviso av-a" style="margin:0">
         <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
@@ -356,18 +364,18 @@ function mostrarFicha(numero) {
     return;
   }
 
-  const ini = c.nom.split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('');
+  const ini = String(c.nom || '').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('');
   $('ficha').innerHTML = `
     <div class="fi-h">
-      <div class="fi-av">${ini}</div>
-      <div><b>${c.nom}</b><span>${c.n}</span></div>
+      <div class="fi-av">${seguro.texto(ini)}</div>
+      <div><b>${seguro.texto(c.nom)}</b><span>${seguro.texto(c.n)}</span></div>
     </div>
-    <dl class="kv"><dt>Documento</dt><dd class="mono">${c.tipoDoc || ''} ${c.doc || '—'}</dd></dl>
-    <dl class="kv"><dt>Correo</dt><dd>${c.cor || '—'}</dd></dl>
-    <dl class="kv"><dt>Teléfono secundario</dt><dd class="mono">${c.tel2 || '—'}</dd></dl>
-    <dl class="kv"><dt>Ciudad</dt><dd>${c.ciu || '—'}</dd></dl>
+    <dl class="kv"><dt>Documento</dt><dd class="mono">${seguro.texto(c.tipoDoc)} ${seguro.celda(c.doc)}</dd></dl>
+    <dl class="kv"><dt>Correo</dt><dd>${seguro.celda(c.cor)}</dd></dl>
+    <dl class="kv"><dt>Teléfono secundario</dt><dd class="mono">${seguro.celda(c.tel2)}</dd></dl>
+    <dl class="kv"><dt>Ciudad</dt><dd>${seguro.celda(c.ciu)}</dd></dl>
     <div class="ficha-et">Descripción del requerimiento</div>
-    <div class="ficha-desc">${c.desc || 'Sin descripción.'}</div>`;
+    <div class="ficha-desc">${c.desc ? seguro.texto(c.desc) : 'Sin descripción.'}</div>`;
 
 }
 
@@ -397,7 +405,6 @@ function abrirTipificadorEnCaliente() {
   $('tipTag').textContent = 'En caliente';
   $('btnTipGuardar').textContent = 'Guardar tipificación';
 }
-
 
 /* Llena el selector de resultados desde el catálogo.
    Con backend, esto vendrá de la campaña del agente. */
@@ -540,8 +547,11 @@ function pintarHistorial() {
     ? `${String(Math.floor((Number(l.segundos) || 0) / 60)).padStart(2, '0')}:${String((Number(l.segundos) || 0) % 60).padStart(2, '0')}`
     : '—';
   const nom = (l) => (buscarContacto(l.numero)?.nom) || 'No identificado';
+  /* El texto de la tipificación lo escribe el agente: se escapa. La
+     etiqueta gris de "Sin tipificar" es nuestra, va tal cual. */
   const tip = (l) => l.tipificacion
-    ? l.tipificacion.cat + (l.tipificacion.sub ? ' · ' + l.tipificacion.sub : '')
+    ? seguro.texto(l.tipificacion.cat +
+        (l.tipificacion.sub ? ' · ' + l.tipificacion.sub : ''))
     : '<span style="color:var(--ink-3)">Sin tipificar</span>';
 
   $('histTabla').innerHTML = `<table class="tb">
@@ -550,8 +560,8 @@ function pintarHistorial() {
       const c = clase(l);
       return `<tr>
         <td class="mono">${horaDe(l)}</td>
-        <td class="mono">${l.numero || '—'}</td>
-        <td>${nom(l)}</td>
+        <td class="mono">${seguro.celda(l.numero)}</td>
+        <td>${seguro.texto(nom(l))}</td>
         <td><span class="t ${c === 'perd' ? 'r' : c === 'ent' ? 'b' : 'g'}">${etq(c)}</span></td>
         <td class="mono">${dur(l)}</td>
         <td>${tip(l)}</td></tr>`;
@@ -738,9 +748,9 @@ function pintarAgentesTransferencia() {
   $('trAgentes').innerHTML = vivos.map((a) => {
     const libre = a.estado === 'Disponible';
     return `<button class="ag-tr ${trAgenteSel === a.ext ? 'sel' : ''}"
-              data-ag="${a.ext}" ${libre ? '' : 'disabled'}>
-        <div class="bd"><b>${a.nombre}</b><span>ext. ${a.ext} · ${a.campana}</span></div>
-        <span class="t ${color(a.estado)}">${a.estado}</span>
+              data-ag="${seguro.texto(a.ext)}" ${libre ? '' : 'disabled'}>
+        <div class="bd"><b>${seguro.texto(a.nombre)}</b><span>ext. ${seguro.texto(a.ext)} · ${seguro.texto(a.campana)}</span></div>
+        <span class="t ${color(a.estado)}">${seguro.texto(a.estado)}</span>
       </button>`;
   }).join('');
 }
@@ -755,7 +765,7 @@ $('trAgentes').addEventListener('click', (e) => {
 function llenarCampanasTransferencia() {
   if ($('trCampana').options.length) return;
   $('trCampana').innerHTML = servicio.campanas
-    .map((c) => `<option value="${c.cola}">${c.nombre} — cola ${c.cola}</option>`).join('');
+    .map((c) => `<option value="${seguro.texto(c.cola)}">${seguro.texto(c.nombre)} — cola ${seguro.texto(c.cola)}</option>`).join('');
 }
 
 /* Sugerencia de extensión mientras se escribe */
@@ -838,13 +848,39 @@ $('btnUnir').addEventListener('click', () => telefonia.unir());
 $('btnVolver').addEventListener('click', () => telefonia.cancelarConsulta());
 
 /* ═══════════ AUDIO ═══════════ */
+/** Pide el micrófono y avisa si el navegador lo niega.
+    `cargarDispositivos` solo enumera dispositivos y se traga los
+    errores, así que no sirve para detectarlo: sin esta comprobación el
+    agente entra y el fallo aparece recién al marcar. */
+async function comprobarMicrofono() {
+  const caja = $('avisoMicro');
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    st.getTracks().forEach((t) => t.stop());     // se libera enseguida
+    caja.style.display = 'none';
+    return true;
+  } catch (e) {
+    const bloqueado = e.name === 'NotAllowedError' ||
+                      /denied|permission/i.test(e.message || '');
+    log('No se pudo acceder al micrófono: ' + e.message, 'warn');
+    caja.style.display = '';
+    caja.innerHTML = `<div class="aviso av-a" style="margin:0">
+      <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"/></svg>
+      <div><b>No hay micrófono disponible: no vas a poder hablar en las llamadas.</b><br>
+      ${bloqueado
+        ? 'El navegador bloqueó el permiso. Haz clic en el candado de la barra de direcciones, entra en Micrófono y elige Permitir. Después recarga la página.'
+        : 'Revisa que el micrófono esté conectado y que ninguna otra aplicación lo esté usando.'}</div></div>`;
+    return false;
+  }
+}
+
 async function cargarDispositivos() {
   try {
     const disp = await navigator.mediaDevices.enumerateDevices();
     const llenar = (sel, lista, etq) => {
       const prev = sel.value;
       sel.innerHTML = lista.length
-        ? lista.map((d, i) => `<option value="${d.deviceId}">${d.label || etq + ' ' + (i+1)}</option>`).join('')
+        ? lista.map((d, i) => `<option value="${seguro.texto(d.deviceId)}">${seguro.texto(d.label) || etq + ' ' + (i + 1)}</option>`).join('')
         : `<option value="">Sin ${etq} disponible</option>`;
       if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
     };
@@ -1055,7 +1091,7 @@ $('btnDescargar').addEventListener('click', () => {
 
 function errorLogin(msg) {
   $('loginErr').innerHTML = msg
-    ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${msg}</div></div>`
+    ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(msg)}</div></div>`
     : '';
 }
 
@@ -1164,12 +1200,16 @@ async function montarAplicacion(sesion, simulado) {
     return;
   }
 
-  // El micrófono es opcional para entrar: si falla, se avisa pero no bloquea
-  try {
-    await cargarDispositivos();
-    iniciarMedidor();
-  } catch (e) {
-    log('No se pudo acceder al micrófono: ' + e.message, 'warn');
+  /* El micrófono no impide entrar, pero sin él no se puede hablar: la
+     llamada falla recién al marcar, con un error que no dice nada. Se
+     comprueba aquí y se avisa con el paso para resolverlo. */
+  if (await comprobarMicrofono()) {
+    try {
+      await cargarDispositivos();
+      iniciarMedidor();
+    } catch (e) {
+      log('No se pudieron preparar los dispositivos: ' + e.message, 'warn');
+    }
   }
 
   if (simulado) {
@@ -1230,7 +1270,7 @@ $('btnDescargarCsv').addEventListener('click', () => supervision.descargarCsv())
 
 function errorCambio(msg) {
   $('ccErr').innerHTML = msg
-    ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${msg}</div></div>`
+    ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(msg)}</div></div>`
     : '';
 }
 
@@ -1343,15 +1383,28 @@ window.addEventListener('unhandledrejection', (ev) => {
      exactamente cuál para no tener que adivinar. */
   const PIEZAS = [
     ['CONFIG',      'js/config.js'],
+    ['seguro',      'js/seguro.js'],
     ['servicio',    'js/servicio.js'],
     ['telefonia',   'js/telefonia.js'],
     ['supervision', 'js/supervision.js'],
     ['formularios', 'js/formularios.js'],
   ];
 
-  const faltan = PIEZAS.filter(([g]) => {
-    try { return eval('typeof ' + g) === 'undefined'; } catch { return true; }
-  }).map(([, archivo]) => archivo);
+  /* Antes esto usaba eval para comprobar si cada módulo existe. eval
+     ejecuta texto como código: aunque aquí la lista es fija y no viene
+     de fuera, es una práctica que no debe quedar en el proyecto. */
+  const PRESENTES = {
+    CONFIG:      typeof CONFIG,
+    seguro:      typeof seguro,
+    servicio:    typeof servicio,
+    telefonia:   typeof telefonia,
+    supervision: typeof supervision,
+    formularios: typeof formularios,
+  };
+
+  const faltan = PIEZAS
+    .filter(([g]) => PRESENTES[g] === 'undefined' || PRESENTES[g] === undefined)
+    .map(([, archivo]) => archivo);
 
   if (faltan.length) {
     errorLogin(
