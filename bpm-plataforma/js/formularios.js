@@ -206,6 +206,24 @@ const formularios = (() => {
   ];
   const etiquetaTipo = (t) => (TIPOS.find((x) => x[0] === t) || [, t])[1];
 
+  /* Los diez datos del contacto. Se muestran apenas se abre el editor,
+     antes de guardar, para que el administrador vea de entrada qué va a
+     llevar el formulario. Es una copia de lo que crea el servidor: el
+     que manda es él, y al guardar se vuelven a leer de la base. */
+  const CAMPOS_CONTACTO = [
+    { clave:'nombre_contacto',  etiqueta:'Nombre del contacto',  tipo:'texto',    requerido:true,  opciones:[] },
+    { clave:'telefono_1',       etiqueta:'Teléfono 1',           tipo:'telefono', requerido:true,  opciones:[] },
+    { clave:'telefono_2',       etiqueta:'Teléfono 2',           tipo:'telefono', requerido:false, opciones:[] },
+    { clave:'correo',           etiqueta:'Correo',               tipo:'correo',   requerido:false, opciones:[] },
+    { clave:'tipo_documento',   etiqueta:'Tipo de documento',    tipo:'lista',    requerido:true,
+      opciones:['CC','CE','TI','NIT','PA','PPT','RC'] },
+    { clave:'numero_documento', etiqueta:'Número de documento',  tipo:'texto',    requerido:true,  opciones:[] },
+    { clave:'direccion',        etiqueta:'Dirección',            tipo:'texto',    requerido:false, opciones:[] },
+    { clave:'pais',             etiqueta:'País',                 tipo:'pais',     requerido:true,  opciones:[] },
+    { clave:'departamento',     etiqueta:'Departamento',         tipo:'departamento', requerido:false, opciones:[] },
+    { clave:'ciudad',           etiqueta:'Ciudad',               tipo:'ciudad',   requerido:true,  opciones:[] },
+  ].map((c) => ({ ...c, fijo: true }));
+
   async function abrirDisenador() {
     await llenarCampanasEditor();
     await pintarLista();
@@ -246,7 +264,11 @@ const formularios = (() => {
   });
 
   $('btnFormNuevo').addEventListener('click', () => {
-    editando = null;
+    /* El formulario aún no existe en la base: se arma en pantalla con
+       los diez datos del contacto ya puestos, y se guarda completo. */
+    editando = { id: null, nombre: '', campana_id: null, activo: true,
+                 campos: CAMPOS_CONTACTO.map((c) => ({ ...c })) };
+
     $('editorForm').style.display = '';
     $('edTitulo').textContent = 'Nuevo formulario';
     $('edNombre').value = '';
@@ -254,10 +276,8 @@ const formularios = (() => {
     $('edActivo').checked = true;
     $('edActivo').disabled = true;
     $('btnFormBorrar').style.display = 'none';
-    $('edCampos').innerHTML = `<div class="aviso av-b" style="margin:0">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div>Al guardarlo se agregan solos los diez datos del contacto.
-      Después podrás añadir las preguntas propias de la campaña.</div></div>`;
+    pintarCamposEditor();
+    $('edNombre').focus();
   });
 
   async function abrirEditor(id) {
@@ -361,7 +381,7 @@ const formularios = (() => {
 
   $('btnCampoNuevo').addEventListener('click', () => {
     if (!editando) {
-      aviso('Guarda primero el formulario y después añade sus preguntas.', 'av-a');
+      aviso('Pulsa Crear para empezar un formulario.', 'av-a');
       return;
     }
     editando.campos.push({ etiqueta: '', tipo: 'texto', requerido: false, fijo: false, opciones: [] });
@@ -377,11 +397,23 @@ const formularios = (() => {
     btn.disabled = true; btn.textContent = 'Guardando…';
 
     try {
-      if (!editando) {
+      if (!editando || !editando.id) {
+        /* Nuevo: el servidor crea el formulario con sus campos fijos y
+           después recibe las preguntas propias, si el administrador ya
+           alcanzó a escribirlas. */
+        const propios = propiosDe();
+        const sinNombre = propios.findIndex((c) => !String(c.etiqueta).trim());
+        if (sinNombre >= 0) { aviso(`La pregunta ${sinNombre + 1} no tiene texto.`, 'av-a'); return; }
+
         const r = await servicio.crearFormulario({ nombre, campana_id });
+        if (propios.length) {
+          await servicio.guardarFormulario(r.id, { nombre, campana_id, campos: propios });
+        }
         await pintarLista();
         await abrirEditor(r.id);
-        aviso(`Formulario creado con los ${r.campos} datos del contacto. Añade ahora las preguntas de la campaña.`, 'av-b');
+        aviso(propios.length
+          ? `Formulario creado con ${r.campos} datos del contacto y ${propios.length} pregunta(s) propia(s).`
+          : `Formulario creado con los ${r.campos} datos del contacto.`, 'av-b');
       } else {
         const propios = propiosDe();
         const sinNombre = propios.findIndex((c) => !String(c.etiqueta).trim());
