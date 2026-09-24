@@ -556,3 +556,18 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 /* Botón de estado personalizado */
 #pzOtro{border-style:dashed}
 #pzOtro.on{border-style:solid}
+
+/* ══════════ CAMPOS FIJOS DEL FORMULARIO ══════════
+   Los diez datos del contacto que lleva todo formulario. Se muestran
+   como bloque de solo lectura: el administrador ve qué se le pedirá al
+   agente, pero no puede tocarlos. */
+.campos-fijos{background:var(--soft);border:1px solid var(--line);
+  border-radius:9px;padding:11px 13px;margin-bottom:12px}
+.cf-tit{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);margin-bottom:9px}
+.cf-tit svg{width:14px;height:14px;fill:none;stroke:var(--ink-2);stroke-width:2}
+.cf-rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px}
+.cf-item{background:#fff;border:1px solid var(--line-2);border-radius:7px;padding:7px 9px}
+.cf-item b{display:block;font-size:12px;font-weight:600;color:var(--ink)}
+.cf-item span{display:block;font-size:10px;color:var(--ink-3);margin-top:1px}
+.cf-op{font-family:var(--mono);font-size:9.5px !important;color:var(--secondary-d) !important}

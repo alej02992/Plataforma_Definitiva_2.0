@@ -367,6 +367,33 @@ const servicio = (() => {
     return api('GET', '/reportes/llamadas' + (q ? '?' + q : ''));
   }
 
+  /* ── Formularios (en la base de datos) ── */
+
+  const listarFormularios = (campana) =>
+    api('GET', '/formularios' + (campana ? '?campana=' + encodeURIComponent(campana) : ''));
+
+  const leerFormulario = (id) => api('GET', '/formularios/' + id);
+
+  /** Al crearlo, el servidor le agrega los diez datos del contacto. */
+  const crearFormulario = (datos) => api('POST', '/formularios', datos);
+
+  /** Guarda nombre, campaña y las preguntas propias. Los campos fijos
+      no viajan: el servidor los conserva. */
+  const guardarFormulario = (id, datos) => api('PUT', '/formularios/' + id, datos);
+
+  const eliminarFormulario = (id) => api('DELETE', '/formularios/' + id);
+
+  /** Respuesta de un agente durante la llamada. */
+  const enviarRespuesta = (id, datos) => api('POST', `/formularios/${id}/respuestas`, datos);
+
+  /* ── Catálogo de ubicaciones ── */
+
+  const listarPaises = () => api('GET', '/ubicaciones/paises');
+  const listarDepartamentos = (pais = 'CO') =>
+    api('GET', '/ubicaciones/departamentos?pais=' + encodeURIComponent(pais));
+  const listarMunicipios = (departamento) =>
+    api('GET', '/ubicaciones/municipios?departamento=' + encodeURIComponent(departamento));
+
   /** Cambia la contraseña del usuario que está en sesión. */
   async function cambiarMiClave(claveActual, claveNueva) {
     if (!hayApi()) {
@@ -558,12 +585,16 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, catalogoTipificacion, cambiarMiClave,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
+    listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
+    eliminarFormulario, enviarRespuesta,
+    listarPaises, listarDepartamentos, listarMunicipios,
     registrarPausa,
     get usuarios()    { return []; },
     /* Listas heredadas de cuando había datos locales. Hoy siempre

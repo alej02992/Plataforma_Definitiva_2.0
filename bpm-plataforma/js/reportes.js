@@ -32,7 +32,7 @@ const reporteLlamadas = (() => {
         const us = await servicio.listarUsuarios();
         $r('rlAgente').innerHTML = '<option value="">Todos</option>' +
           us.filter((u) => u.extension)
-            .map((u) => `<option value="${u.extension}">${u.nombre} · ${u.extension}</option>`).join('');
+            .map((u) => `<option value="${seguro.texto(u.extension)}">${seguro.texto(u.nombre)} · ${seguro.texto(u.extension)}</option>`).join('');
         agentesCargados = true;
       } catch { /* queda "Todos" */ }
     }
@@ -55,7 +55,7 @@ const reporteLlamadas = (() => {
         numero: $r('rlNumero').value.trim(),
       });
     } catch (e) {
-      $r('rlTabla').innerHTML = `<div class="vacio">No se pudo consultar: ${e.message}</div>`;
+      $r('rlTabla').innerHTML = `<div class="vacio">No se pudo consultar: ${seguro.texto(e.message)}</div>`;
       return;
     }
 
@@ -82,15 +82,15 @@ const reporteLlamadas = (() => {
       <tr><th>Fecha</th><th>Hora</th><th>Agente</th><th>Tipo</th><th>Número</th>
           <th>Estado</th><th>Duración</th><th>Tipificación</th><th>ID de la llamada</th></tr>
       ${d.llamadas.map((l) => `<tr>
-        <td class="mono">${l.fecha}</td>
-        <td class="mono">${l.hora}</td>
-        <td>${l.agente}<span class="cred">ext. ${l.extension}</span></td>
+        <td class="mono">${seguro.texto(l.fecha)}</td>
+        <td class="mono">${seguro.texto(l.hora)}</td>
+        <td>${seguro.texto(l.agente)}<span class="cred">ext. ${seguro.texto(l.extension)}</span></td>
         <td>${l.direccion === 'entrante' ? 'Entrante' : 'Saliente'}</td>
-        <td class="mono">${l.numero}</td>
-        <td><span class="t ${l.estado === 'Contestada' ? 'g' : 'a'}">${l.estado}</span></td>
+        <td class="mono">${seguro.texto(l.numero)}</td>
+        <td><span class="t ${l.estado === 'Contestada' ? 'g' : 'a'}">${seguro.texto(l.estado)}</span></td>
         <td class="mono">${reloj(l.segundos)}</td>
-        <td>${l.resultado}</td>
-        <td class="mono" style="font-size:10.5px;color:var(--ink-3)" title="${l.llamada}">${corto(l.llamada)}</td>
+        <td>${seguro.texto(l.resultado)}</td>
+        <td class="mono" style="font-size:10.5px;color:var(--ink-3)" title="${seguro.texto(l.llamada)}">${seguro.texto(corto(l.llamada))}</td>
       </tr>`).join('')}</table></div>`;
   }
 

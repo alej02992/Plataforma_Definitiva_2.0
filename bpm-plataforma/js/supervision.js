@@ -82,7 +82,7 @@ const supervision = (() => {
   function mostrarError(msg) {
     $('tablaAgentes').innerHTML = `<div class="aviso av-r" style="margin:0">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div>No se pudo obtener el estado de la operación: ${msg}</div></div>`;
+      <div>No se pudo obtener el estado de la operación: ${seguro.texto(msg)}</div></div>`;
   }
 
   /* ═══════════ INDICADORES ═══════════ */
@@ -154,12 +154,12 @@ const supervision = (() => {
       <tr><th>Ext.</th><th>Agente</th><th>Campaña</th><th>Estado</th>
           <th>Tiempo</th><th>Atendiendo</th></tr>
       ${agentes.map((a) => `<tr>
-        <td class="mono">${a.extension || '—'}</td>
-        <td><b>${a.nombre}</b></td>
-        <td>${a.campana || '—'}</td>
-        <td><span class="t ${color(a.estado)}"><span class="d"></span>${a.estado}</span></td>
+        <td class="mono">${seguro.celda(a.extension)}</td>
+        <td><b>${seguro.texto(a.nombre)}</b></td>
+        <td>${seguro.celda(a.campana)}</td>
+        <td><span class="t ${color(a.estado)}"><span class="d"></span>${seguro.texto(a.estado)}</span></td>
         <td class="mono">${reloj(a.desde)}</td>
-        <td class="mono">${a.numero || '—'}</td>
+        <td class="mono">${seguro.celda(a.numero)}</td>
       </tr>`).join('')}</table>`;
   }
 
@@ -171,11 +171,11 @@ const supervision = (() => {
         const h = hor.find((x) => x.campana === c.nombre) || {};
         const abierto = !!h.abierto;
         return `<tr>
-          <td><b>${c.nombre}</b><br><span style="font-size:10.5px;color:var(--ink-3)">${c.tipo}</span></td>
-          <td class="mono">${h.inicio || '—'} a ${h.fin || '—'}</td>
-          <td>${h.dias || '—'}</td>
+          <td><b>${seguro.texto(c.nombre)}</b><br><span style="font-size:10.5px;color:var(--ink-3)">${seguro.texto(c.tipo)}</span></td>
+          <td class="mono">${seguro.celda(h.inicio)} a ${seguro.celda(h.fin)}</td>
+          <td>${seguro.celda(h.dias)}</td>
           <td><span class="t ${abierto ? 'g' : 'o'}">${abierto ? 'Abierto' : 'Cerrado'}</span></td>
-          <td><button class="b ${abierto ? 'b-gh' : 'b-teal'} b-sm" data-hor="${h.id || ''}">
+          <td><button class="b ${abierto ? 'b-gh' : 'b-teal'} b-sm" data-hor="${seguro.texto(h.id)}">
             ${abierto ? 'Cerrar' : 'Abrir'}</button></td>
         </tr>`;
       }).join('')}</table>`;
@@ -196,7 +196,7 @@ const supervision = (() => {
   function llenarFiltro() {
     const s = $('filtroCampana');
     s.innerHTML = '<option value="Todas">Todas las campañas</option>' +
-      servicio.campanas.map((c) => `<option>${c.nombre}</option>`).join('');
+      servicio.campanas.map((c) => `<option>${seguro.texto(c.nombre)}</option>`).join('');
     s.value = filtro;
   }
 
