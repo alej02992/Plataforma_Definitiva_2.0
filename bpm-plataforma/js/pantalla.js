@@ -163,7 +163,10 @@ function irA(vista) {
   if (vista === 'disenador' && typeof formularios !== 'undefined') formularios.abrirDisenador();
 
   if (typeof administracion !== 'undefined') {
-    if (vista === 'campanas')     administracion.abrirCampanas();
+    if (vista === 'campanas') {
+      administracion.abrirCampanas();
+      if (typeof gestionEstados !== 'undefined') gestionEstados.abrir();
+    }
     if (vista === 'grabaciones')  administracion.abrirGrabaciones();
     if (vista === 'escucha')      administracion.abrirEscucha();
     if (vista === 'admcampanas')  administracion.abrirAdmCampanas();
@@ -595,7 +598,46 @@ function marcarEstadoAgente(texto) {
   $('estAgTx').textContent = texto;
 }
 
-/** Pone al agente en pausa con el motivo indicado. */
+/* ── Estados de pausa ──────────────────────────────────────────────
+   Los define el supervisor: unos valen para todas las campañas y otros
+   solo para una. La plataforma los pide al servidor al iniciar sesión y
+   los vuelve a pedir cada 30 segundos, así un estado recién activado
+   aparece sin que el agente recargue. */
+
+const ICONOS_PAUSA = {
+  'Baño':              '<path d="M8 2v4M16 2v4M4 10h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10z"/>',
+  'Almuerzo':          '<path d="M7 2v20M4 2v6a3 3 0 0 0 6 0V2M17 2c-1.7 1.7-3 4-3 7h3v13"/>',
+  'Break':             '<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 2v3M10 2v3M14 2v3"/>',
+  'Retroalimentación': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+};
+const ICONO_GENERICO = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
+
+let firmaEstados = '';
+
+function pintarPausas(lista) {
+  /* Si la lista no cambió no se repinta: evita que el botón activo
+     parpadee en cada refresco. */
+  const firma = lista.map((t) => t.nombre).join('|');
+  if (firma === firmaEstados) return;
+  firmaEstados = firma;
+
+  $('pausas').innerHTML = lista.length
+    ? lista.map((t) => `<button class="pz${ui.pausa === t.nombre ? ' on' : ''}"
+        data-p="${seguro.texto(t.nombre)}"${t.campana_id ? ' title="Solo para tu campaña"' : ''}>
+        <svg viewBox="0 0 24 24">${ICONOS_PAUSA[t.nombre] || ICONO_GENERICO}</svg>${seguro.texto(t.nombre)}</button>`).join('')
+    : '<div class="vacio" style="grid-column:1/-1">No hay estados habilitados para tu campaña.</div>';
+}
+
+async function cargarEstados() {
+  try { pintarPausas(await servicio.listarEstados()); }
+  catch { /* se conserva lo último que se pintó */ }
+}
+
+setInterval(() => {
+  if (ui.sesion && $('app').classList.contains('on')) cargarEstados();
+}, 30000);
+
+/** Pone al agente en el estado indicado. */
 function entrarEnPausa(motivo, boton) {
   ui.pausa = motivo;
   telefonia.pausa = motivo;
@@ -603,7 +645,16 @@ function entrarEnPausa(motivo, boton) {
   marcarEstadoAgente(motivo);
   $('btnCall').disabled = true;
   telefonia.traza('Agente en pausa: ' + motivo, 'info');
-  servicio.registrarPausa(motivo, true);
+
+  /* Si el servidor rechaza el estado —por ejemplo, si el supervisor lo
+     desactivó hace un momento— se deshace el cambio. */
+  servicio.registrarPausa(motivo, true).then((r) => {
+    if (r && r.ok === false) {
+      aviso(r.error || 'No se pudo registrar la pausa.', 'av-a');
+      $('btnDisponible').click();
+      cargarEstados();
+    }
+  });
 }
 
 $('pausas').addEventListener('click', (e) => {
@@ -613,54 +664,12 @@ $('pausas').addEventListener('click', (e) => {
     aviso('No puedes entrar en pausa con una llamada en curso.', 'av-a');
     return;
   }
-
-  /* El botón "Otro" abre el campo para escribir el motivo en lugar de
-     entrar en pausa directamente. */
-  if (b.dataset.p === '__otro__') {
-    $('otroEstado').style.display = '';
-    $('otroMotivo').value = '';
-    $('otroMotivo').focus();
-    return;
-  }
-
-  $('otroEstado').style.display = 'none';
   entrarEnPausa(b.dataset.p, b);
-});
-
-/* ── Estado personalizado ── */
-$('btnOtroOk').addEventListener('click', () => {
-  const motivo = $('otroMotivo').value.trim();
-
-  if (motivo.length < 3) {
-    aviso('Escribe el motivo de la pausa, al menos tres caracteres.', 'av-a');
-    $('otroMotivo').focus();
-    return;
-  }
-  if (telefonia.estado !== 'reposo') {
-    aviso('No puedes entrar en pausa con una llamada en curso.', 'av-a');
-    return;
-  }
-
-  $('otroEstado').style.display = 'none';
-  entrarEnPausa(motivo, $('pzOtro'));
-  $('pzOtro').lastChild.textContent = motivo.length > 12
-    ? motivo.slice(0, 11) + '…' : motivo;
-});
-
-$('btnOtroCancel').addEventListener('click', () => {
-  $('otroEstado').style.display = 'none';
-});
-
-$('otroMotivo').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') $('btnOtroOk').click();
-  if (e.key === 'Escape') $('btnOtroCancel').click();
 });
 
 $('btnDisponible').addEventListener('click', () => {
   ui.pausa = null; telefonia.pausa = null;
   document.querySelectorAll('.pz').forEach((x) => x.classList.remove('on'));
-  $('otroEstado').style.display = 'none';
-  $('pzOtro').lastChild.textContent = 'Otro';    // vuelve a su etiqueta
   marcarEstadoAgente(telefonia.registrado ? 'Disponible' : 'Sin conectar');
   $('btnCall').disabled = !telefonia.registrado || telefonia.estado !== 'reposo';
   telefonia.traza('Agente disponible', 'info');
@@ -1205,6 +1214,8 @@ async function montarAplicacion(sesion, simulado) {
     pintarHistorial();
     formularios.pintarPendientes();
     formularios.abrirAgente();      // carga el formulario de su campaña
+    firmaEstados = '';
+    cargarEstados();               // y los estados de pausa de su campaña
 
     // Solo cuando todo lo anterior salió bien se cambia de pantalla
     $('login').style.display = 'none';

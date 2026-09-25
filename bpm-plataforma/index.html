@@ -243,31 +243,10 @@
               <div class="c-h"><h2>Mi estado</h2></div>
               <p class="c-sub">En pausa no se reciben llamadas entrantes.</p>
               <button class="b b-green b-w" id="btnDisponible" style="margin-bottom:9px">Disponible</button>
+              <!-- Los estados los define el supervisor. Se cargan del
+                   servidor y se refrescan solos cada 30 segundos. -->
               <div class="pausas" id="pausas">
-                <button class="pz" data-p="Baño">
-                  <svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M4 10h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10z"/></svg>Baño</button>
-                <button class="pz" data-p="Almuerzo">
-                  <svg viewBox="0 0 24 24"><path d="M3 2v7a3 3 0 0 0 6 0V2M6 9v13M18 2c-2 0-3 3-3 6s1 4 3 4 3-1 3-4-1-6-3-6zM18 12v10"/></svg>Almuerzo</button>
-                <button class="pz" data-p="Break">
-                  <svg viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>Break</button>
-                <button class="pz" data-p="Retroalimentación">
-                  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Retro</button>
-                <button class="pz" id="pzOtro" data-p="__otro__">
-                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Otro</button>
-              </div>
-
-              <!-- Estado personalizado: el agente escribe el motivo -->
-              <div id="otroEstado" style="display:none;margin-top:9px">
-                <div class="f" style="margin:0">
-                  <label>Motivo de la pausa</label>
-                  <input class="fi" id="otroMotivo" maxlength="40"
-                         placeholder="Ej. Capacitación, Reunión…" autocomplete="off">
-                  <div class="hint">Queda registrado en los reportes con ese nombre.</div>
-                </div>
-                <div class="ctrls" style="margin-top:7px">
-                  <button class="b b-teal b-sm" id="btnOtroOk">Entrar en pausa</button>
-                  <button class="b b-gh b-sm" id="btnOtroCancel">Cancelar</button>
-                </div>
+                <div class="vacio" style="grid-column:1/-1">Cargando estados…</div>
               </div>
             </div>
           </div>
@@ -483,6 +462,24 @@
 
       <!-- ══════ GESTIÓN DE CAMPAÑAS · supervisor ══════ -->
       <section class="vista" data-v="campanas">
+        <div class="c">
+          <div class="c-h"><h2>Estados de pausa</h2><span class="t o" id="estN">—</span></div>
+          <p class="c-sub">Los estados activos aparecen como botón en el panel de los
+            agentes. Puedes dejarlos para todas las campañas o solo para una.</p>
+          <div class="r2" style="align-items:end">
+            <div class="f" style="margin:0">
+              <label>Nuevo estado</label>
+              <input class="fi" id="estNuevo" maxlength="40" placeholder="Ej. Capacitación" autocomplete="off">
+            </div>
+            <div class="f" style="margin:0">
+              <label>Campaña</label>
+              <select class="fi" id="estCampana"><option value="">Todas las campañas</option></select>
+            </div>
+          </div>
+          <div class="ctrls"><button class="b b-teal" id="btnEstCrear">Crear y activar</button></div>
+          <div id="tablaEstados" style="margin-top:12px"></div>
+        </div>
+
         <div class="c">
           <div class="c-h"><h2>Horarios de campaña</h2></div>
           <p class="c-sub">Al cerrar una campaña, las llamadas entrantes escuchan
@@ -782,6 +779,7 @@
 <script src="js/servicio.js"></script>
 <script src="js/telefonia.js"></script>
 <script src="js/supervision.js"></script>
+<script src="js/gestion.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>

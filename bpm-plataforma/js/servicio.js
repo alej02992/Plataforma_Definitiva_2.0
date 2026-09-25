@@ -367,6 +367,23 @@ const servicio = (() => {
     return api('GET', '/reportes/llamadas' + (q ? '?' + q : ''));
   }
 
+  /* ── Estados de pausa (los define el supervisor) ── */
+
+  /** Con todos=true devuelve también los inactivos y los de otras
+      campañas, para que el supervisor los administre. */
+  const listarEstados = (todos = false) =>
+    api('GET', '/pausas/tipos' + (todos ? '?todos=1' : ''));
+
+  async function crearEstado(nombre, campana_id = null) {
+    try { return { ok: true, ...(await api('POST', '/pausas/tipos', { nombre, campana_id, activo: true })) }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
+  async function activarEstado(id, activo) {
+    try { await api('PUT', '/pausas/tipos/' + id, { activo }); return { ok: true }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
   /** Busca el contacto por teléfono en la base. Es la consulta de cada
       llamada entrante: tiene que responder antes de que el agente
       conteste, por eso la tabla tiene índice por número. */
@@ -599,6 +616,7 @@ const servicio = (() => {
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
+    listarEstados, crearEstado, activarEstado,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
