@@ -52,10 +52,12 @@ const gestionEstados = (() => {
         <td><b>${seguro.texto(t.nombre)}</b></td>
         <td>${t.campana_id ? seguro.texto(t.campana) : 'Todas'}</td>
         <td><span class="t ${t.activo ? 'g' : 'o'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
-        <td style="text-align:right">
+        <td style="text-align:right;white-space:nowrap">
           <button class="b ${t.activo ? 'b-gh' : 'b-teal'} b-sm"
                   data-est="${seguro.texto(t.id)}" data-act="${t.activo ? 0 : 1}">
             ${t.activo ? 'Desactivar' : 'Activar'}</button>
+          <button class="b b-red b-sm" data-borrar="${seguro.texto(t.id)}"
+                  title="Solo si nunca se ha usado">Eliminar</button>
         </td></tr>`).join('')}</table>`;
   }
 
@@ -83,6 +85,25 @@ const gestionEstados = (() => {
 
   document.addEventListener('click', async (ev) => {
     if (ev.target.closest('#btnEstCrear')) return crear();
+
+    /* Eliminar: desaparece de la lista. El servidor lo rechaza si el
+       estado ya tiene pausas registradas. */
+    const del = ev.target.closest('[data-borrar]');
+    if (del) {
+      const fila = del.closest('tr');
+      const nombre = fila?.querySelector('b')?.textContent || 'este estado';
+      if (!confirm(`¿Eliminar el estado "${nombre}"?\n\n` +
+                   'Desaparece de la lista. Si ya se usó alguna vez, el servidor ' +
+                   'no lo permitirá y tendrás que desactivarlo.')) return;
+
+      del.disabled = true;
+      const r = await servicio.eliminarEstado(del.dataset.borrar);
+      if (!r.ok) { aviso(r.error, 'av-a'); del.disabled = false; return; }
+
+      await pintar();
+      aviso(`Estado "${nombre}" eliminado.`, 'av-b');
+      return;
+    }
 
     const b = ev.target.closest('[data-est]');
     if (!b) return;

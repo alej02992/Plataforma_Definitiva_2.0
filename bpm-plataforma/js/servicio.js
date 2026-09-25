@@ -384,6 +384,14 @@ const servicio = (() => {
     catch (e) { return { ok: false, error: e.message }; }
   }
 
+  /** Elimina un estado. Solo funciona si nunca se usó; si ya tiene
+      pausas registradas, el servidor lo impide para no perder el
+      historial y hay que desactivarlo. */
+  async function eliminarEstado(id) {
+    try { await api('DELETE', '/pausas/tipos/' + id); return { ok: true }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
   /** Busca el contacto por teléfono en la base. Es la consulta de cada
       llamada entrante: tiene que responder antes de que el agente
       conteste, por eso la tabla tiene índice por número. */
@@ -616,7 +624,7 @@ const servicio = (() => {
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
-    listarEstados, crearEstado, activarEstado,
+    listarEstados, crearEstado, activarEstado, eliminarEstado,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
