@@ -312,12 +312,20 @@
               <div class="c-h">
                 <h2 id="formTitulo">Formulario de la gestión</h2>
                 <span class="t o" id="formCampana">—</span>
+                <!-- Se despliega solo al entrar una llamada; el agente
+                     también puede abrirlo o cerrarlo cuando quiera. -->
+                <button class="plegar" id="btnFormPlegar" aria-expanded="false"
+                        title="Mostrar u ocultar el formulario">
+                  <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
               </div>
-              <p class="c-sub">Se habilita durante la llamada. El teléfono llega puesto.</p>
-              <div id="formEspera" class="vacio">Aparece al entrar o salir una llamada.</div>
-              <div id="formCampos"></div>
-              <button class="b b-teal b-w" id="btnFormGuardar" style="display:none;margin-top:8px">
-                Guardar respuesta</button>
+              <div id="formCuerpo" style="display:none">
+                <p class="c-sub">Se habilita durante la llamada. El teléfono llega puesto.</p>
+                <div id="formEspera" class="vacio">Aparece al entrar o salir una llamada.</div>
+                <div id="formCampos"></div>
+                <button class="b b-teal b-w" id="btnFormGuardar" style="display:none;margin-top:8px">
+                  Guardar respuesta</button>
+              </div>
             </div>
 
             <div class="c">

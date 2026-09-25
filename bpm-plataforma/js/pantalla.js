@@ -344,14 +344,27 @@ function iniciarCrono() {
 }
 function detenerCrono() { if (ui.cronoId) clearInterval(ui.cronoId); ui.cronoId = null; }
 
-/* ═══════════ FICHA DEL CONTACTO ═══════════ */
+/* ═══════════ FICHA DEL CONTACTO ═══════════
+   Los contactos viven en la base. Al entrar una llamada se consulta por
+   el número; lo que llega se guarda en memoria para el resto del turno,
+   así el historial puede mostrar el nombre sin volver a preguntar. */
+
+const contactosVistos = new Map();
+
 function buscarContacto(numero) {
-  const n = String(numero || '').replace(/\D/g, '');
-  return DIRECTORIO.find((c) => c.n.replace(/\D/g, '') === n) || null;
+  return contactosVistos.get(String(numero || '').replace(/\D/g, '')) || null;
 }
 
-function mostrarFicha(numero) {
-  const c = buscarContacto(numero);
+async function mostrarFicha(numero) {
+  const clave = String(numero || '').replace(/\D/g, '');
+  let c = contactosVistos.get(clave);
+
+  if (c === undefined) {
+    $('ficha').innerHTML = '<div class="vacio">Buscando el contacto…</div>';
+    c = await servicio.contactoPorTelefono(numero);
+    contactosVistos.set(clave, c);   // también se recuerda que no existe
+    pintarHistorial();               // el historial ya puede mostrar su nombre
+  }
 
   if (!c) {
     $('ficha').innerHTML = `

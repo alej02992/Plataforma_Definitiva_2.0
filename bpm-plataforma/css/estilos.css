@@ -571,3 +571,12 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .cf-item b{display:block;font-size:12px;font-weight:600;color:var(--ink)}
 .cf-item span{display:block;font-size:10px;color:var(--ink-3);margin-top:1px}
 .cf-op{font-family:var(--mono);font-size:9.5px !important;color:var(--secondary-d) !important}
+
+/* ══════════ TARJETA PLEGABLE ══════════ */
+.plegar{width:26px;height:26px;border:1px solid var(--line);border-radius:7px;
+  background:#fff;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;flex-shrink:0}
+.plegar:hover{background:var(--secondary-l);border-color:#9FE4FA}
+.plegar svg{width:14px;height:14px;fill:none;stroke:var(--ink-2);stroke-width:2.2;
+  transition:transform .18s}
+.plegar.abierto svg{transform:rotate(180deg)}

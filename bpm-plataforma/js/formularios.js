@@ -179,12 +179,43 @@ const formularios = (() => {
     el.replaceWith(nuevo);
   }
 
+  /* ── Plegado ─────────────────────────────────────────────────
+     Ocupa mucho espacio, así que en reposo se muestra plegado: solo el
+     nombre del formulario. Se abre solo cuando entra una llamada, y el
+     agente puede abrirlo o cerrarlo a mano en cualquier momento. */
+
+  let plegadoPorElAgente = false;    // respeta lo que el agente decidió
+
+  function plegar(abrir, porElAgente = false) {
+    const cuerpo = $('formCuerpo');
+    const btn = $('btnFormPlegar');
+    if (!cuerpo || !btn) return;
+
+    cuerpo.style.display = abrir ? '' : 'none';
+    btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    btn.classList.toggle('abierto', abrir);
+    if (porElAgente) plegadoPorElAgente = !abrir;
+  }
+
+  $('btnFormPlegar')?.addEventListener('click', () => {
+    /* Cerrarlo mientras no hay llamada es solo para ganar espacio: no
+       debe impedir que se despliegue cuando entre la siguiente. Solo
+       se respeta la decisión si la tomó durante una gestión. */
+    const enGestion = telefonia.estado !== 'reposo' || !!ui.pendiente;
+    plegar($('formCuerpo').style.display === 'none', enGestion);
+  });
+
   /* ── Habilitar según la llamada ──────────────────────────────── */
 
   /** El formulario se llena durante la gestión, no en cualquier momento. */
   function habilitar() {
     if (!formAgente) return;
     const hayGestion = telefonia.estado !== 'reposo' || !!ui.pendiente;
+
+    /* Al entrar la gestión se despliega solo, salvo que el agente lo
+       haya cerrado a propósito. Al terminar, vuelve a plegarse. */
+    if (hayGestion && !plegadoPorElAgente) plegar(true);
+    if (!hayGestion) { plegar(false); plegadoPorElAgente = false; }
 
     $('formCampos').style.opacity = hayGestion ? '1' : '.5';
     $('formCampos').querySelectorAll('input, select, textarea')

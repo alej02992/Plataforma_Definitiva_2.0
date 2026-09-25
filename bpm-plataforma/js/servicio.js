@@ -367,6 +367,15 @@ const servicio = (() => {
     return api('GET', '/reportes/llamadas' + (q ? '?' + q : ''));
   }
 
+  /** Busca el contacto por teléfono en la base. Es la consulta de cada
+      llamada entrante: tiene que responder antes de que el agente
+      conteste, por eso la tabla tiene índice por número. */
+  async function contactoPorTelefono(numero) {
+    if (!hayApi()) return null;
+    try { return await api('GET', '/contactos/telefono/' + encodeURIComponent(numero)); }
+    catch { return null; }          // 404 = número no registrado
+  }
+
   /* ── Formularios (en la base de datos) ── */
 
   const listarFormularios = (campana) =>
@@ -589,7 +598,7 @@ const servicio = (() => {
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
-    hayApi, catalogoTipificacion, cambiarMiClave,
+    hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
