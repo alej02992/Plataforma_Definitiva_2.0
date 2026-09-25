@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -265,6 +266,7 @@ function pintarSoftphone(d) {
   if (e !== 'activa' && e !== 'espera') $('calidadCard').style.display = 'none';
 
   if (e === 'reposo') {
+    formularios.alCambiarLlamada();
     if ($('tipForm').style.display === 'block' && !ui.pendiente) cerrarTipificador();
     pan.className = 'pan'; lb.textContent = 'EN REPOSO';
     num.textContent = '—'; sm.textContent = 'Sin llamada activa';
@@ -300,6 +302,7 @@ function pintarSoftphone(d) {
 
   if (e === 'activa' || e === 'espera') {
     abrirTipificadorEnCaliente();
+    formularios.alCambiarLlamada();
     pan.className = 'pan live';
     lb.textContent = e === 'espera' ? 'EN ESPERA' : 'LLAMADA ACTIVA';
     sm.textContent = e === 'espera' ? 'El cliente escucha la música' : 'Conversación en curso';
@@ -1188,6 +1191,7 @@ async function montarAplicacion(sesion, simulado) {
     llenarCatalogo();
     pintarHistorial();
     formularios.pintarPendientes();
+    formularios.abrirAgente();      // carga el formulario de su campaña
 
     // Solo cuando todo lo anterior salió bien se cambia de pantalla
     $('login').style.display = 'none';

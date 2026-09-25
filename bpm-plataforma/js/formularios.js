@@ -24,111 +24,210 @@ const formularios = (() => {
 
   /* ═══════════════════════════════════════════════════════════════
      LADO AGENTE
+
+     El formulario de la campaña aparece en el escritorio, debajo de la
+     tipificación. Se carga al iniciar sesión y se habilita cuando entra
+     o sale una llamada: el Teléfono 1 llega puesto con el número de esa
+     llamada.
+
+     País, departamento y ciudad salen del catálogo de la base. Si el
+     país es Colombia, la ciudad depende del departamento; para otros
+     países se escriben a mano, porque no tenemos sus divisiones.
      ═══════════════════════════════════════════════════════════════ */
 
-  function abrirAgente() {
-    const campana = ui.sesion?.campana || '—';
-    $('formCampana').textContent = campana;
+  let formAgente = null;      // formulario de la campaña del agente
+  let paises = [];
+  let departamentos = [];
 
-    const lista = servicio.formulariosDe(campana);
-    $('selForm').innerHTML = '<option value="">Selecciona…</option>' +
-      lista.map((f) => `<option value="${f.id}">${f.nombre}</option>`).join('');
+  async function abrirAgente() {
+    const caja = $('formCampos');
+    if (!caja) return;
 
-    if (!lista.length) {
-      $('formCampos').innerHTML =
-        '<div class="vacio">No hay formularios activos para tu campaña.</div>';
+    $('formCampana').textContent = ui.sesion?.campana || 'Todas';
+
+    try {
+      const lista = await servicio.listarFormularios(ui.sesion?.campana_id || '');
+      if (!lista.length) {
+        caja.innerHTML = '<div class="vacio">Tu campaña todavía no tiene formulario.</div>';
+        $('btnFormGuardar').style.display = 'none';
+        return;
+      }
+      /* Si hay varios, se usa el de la campaña antes que el general. */
+      const elegido = lista.find((f) => f.campana_id) || lista[0];
+      formAgente = await servicio.leerFormulario(elegido.id);
+      $('formTitulo').textContent = formAgente.nombre;
+
+      [paises, departamentos] = await Promise.all([
+        servicio.listarPaises(), servicio.listarDepartamentos('CO'),
+      ]);
+      pintarCampos();
+    } catch (e) {
+      caja.innerHTML = `<div class="vacio">No se pudo cargar el formulario: ${seguro.texto(e.message)}</div>`;
+      $('btnFormGuardar').style.display = 'none';
     }
-
-    // Si hay una llamada en curso, el número se llena solo
-    if (telefonia.numero) $('formNum').value = telefonia.numero;
-
-    pintarPendientes();
   }
 
-  $('selForm').addEventListener('change', () => {
-    const id = $('selForm').value;
-    formActual = servicio.formularios().find((f) => f.id === id) || null;
-    pintarCampos();
-  });
-
-  /** Dibuja los campos del formulario elegido. */
+  /** Dibuja los campos del formulario del agente. */
   function pintarCampos() {
-    if (!formActual) {
-      $('formCampos').innerHTML = '<div class="vacio">Selecciona un formulario.</div>';
-      $('btnFormGuardar').style.display = 'none';
-      return;
-    }
+    if (!formAgente) return;
+    const caja = $('formCampos');
 
-    $('formCampos').innerHTML = formActual.campos.map((c, i) => {
+    caja.innerHTML = formAgente.campos.map((c) => {
+      const id = 'fc' + c.id;
       const req = c.requerido ? ' <i>*</i>' : '';
-      const id = 'cf' + i;
+      const ayuda = c.ayuda ? `<div class="hint">${seguro.texto(c.ayuda)}</div>` : '';
       let control;
 
-      switch (c.tipo) {
-        case 'texto':
-          control = `<input class="fi" id="${id}" data-campo="${c.etiqueta}" autocomplete="off">`;
-          break;
-        case 'numero':
-          control = `<input class="fi mono" id="${id}" type="number" data-campo="${c.etiqueta}">`;
-          break;
-        case 'fecha':
-          control = `<input class="fi" id="${id}" type="date" data-campo="${c.etiqueta}">`;
-          break;
-        case 'lista':
-          control = `<select class="fi" id="${id}" data-campo="${c.etiqueta}">` +
-            '<option value="">Selecciona…</option>' +
-            (c.opciones || []).map((o) => `<option>${o}</option>`).join('') + '</select>';
-          break;
-        case 'si_no':
-          control = `<select class="fi" id="${id}" data-campo="${c.etiqueta}">` +
-            '<option value="">Selecciona…</option><option>Sí</option><option>No</option></select>';
-          break;
-        case 'parrafo':
-          control = `<textarea class="fi" id="${id}" data-campo="${c.etiqueta}"></textarea>`;
-          break;
-        default:
-          control = `<input class="fi" id="${id}" data-campo="${c.etiqueta}">`;
+      if (c.tipo === 'parrafo') {
+        control = `<textarea class="fi" id="${id}" rows="3"></textarea>`;
+
+      } else if (c.tipo === 'lista') {
+        control = `<select class="fi" id="${id}"><option value="">Selecciona…</option>` +
+          (c.opciones || []).map((o) => `<option>${seguro.texto(o)}</option>`).join('') + '</select>';
+
+      } else if (c.tipo === 'si_no') {
+        control = `<select class="fi" id="${id}"><option value="">Selecciona…</option>
+          <option>Sí</option><option>No</option></select>`;
+
+      } else if (c.tipo === 'pais') {
+        control = `<select class="fi" id="${id}" data-ubi="pais">` +
+          paises.map((p) => `<option value="${seguro.texto(p.nombre)}" data-cod="${seguro.texto(p.codigo)}"${p.codigo === 'CO' ? ' selected' : ''}>${seguro.texto(p.nombre)}</option>`).join('') +
+          '</select>';
+
+      } else if (c.tipo === 'departamento') {
+        control = `<select class="fi" id="${id}" data-ubi="departamento"><option value="">Selecciona…</option>` +
+          departamentos.map((d) => `<option value="${seguro.texto(d.nombre)}" data-cod="${seguro.texto(d.codigo)}">${seguro.texto(d.nombre)}</option>`).join('') +
+          '</select>';
+
+      } else if (c.tipo === 'ciudad') {
+        control = `<select class="fi" id="${id}" data-ubi="ciudad">
+          <option value="">Elige primero el departamento</option></select>`;
+
+      } else {
+        const tipoHtml = c.tipo === 'fecha' ? 'date'
+                       : c.tipo === 'numero' ? 'number'
+                       : c.tipo === 'correo' ? 'email' : 'text';
+        const mono = (c.tipo === 'telefono' || c.tipo === 'numero') ? ' mono' : '';
+        control = `<input class="fi${mono}" id="${id}" type="${tipoHtml}" autocomplete="off">`;
       }
-      return `<div class="f"><label>${c.etiqueta}${req}</label>${control}</div>`;
+
+      return `<div class="f"><label>${seguro.texto(c.etiqueta)}${req}</label>${control}${ayuda}</div>`;
     }).join('');
 
     $('btnFormGuardar').style.display = '';
+    habilitar();
   }
 
-  /** Recoge lo escrito y lo encola. */
-  $('btnFormGuardar').addEventListener('click', () => {
-    if (!formActual) return;
+  /* ── Ubicación encadenada ────────────────────────────────────────
+     Cambiar el país recarga los departamentos; cambiar el departamento
+     recarga las ciudades. Fuera de Colombia se escriben a mano. */
 
-    const numero = $('formNum').value.trim();
-    if (!numero) { aviso('Escribe el número del contacto.', 'av-a'); return; }
+  $('formCampos')?.addEventListener('change', async (e) => {
+    const ubi = e.target.dataset?.ubi;
+    if (!ubi || !formAgente) return;
 
-    const datos = {};
-    let falta = null;
+    const campoDe = (clave) => formAgente.campos.find((c) => c.clave === clave);
+    const elDe = (clave) => { const c = campoDe(clave); return c ? $('fc' + c.id) : null; };
 
-    formActual.campos.forEach((c, i) => {
-      const el = $('cf' + i);
-      const v = el ? String(el.value).trim() : '';
-      if (c.requerido && !v && !falta) falta = c.etiqueta;
-      datos[c.etiqueta] = v;
+    if (ubi === 'pais') {
+      const cod = e.target.selectedOptions[0]?.dataset.cod;
+      const esColombia = cod === 'CO';
+      const dep = elDe('departamento');
+      const ciu = elDe('ciudad');
+
+      if (esColombia) {
+        if (dep) reemplazar(dep, 'select',
+          '<option value="">Selecciona…</option>' +
+          departamentos.map((d) => `<option value="${seguro.texto(d.nombre)}" data-cod="${seguro.texto(d.codigo)}">${seguro.texto(d.nombre)}</option>`).join(''),
+          'departamento');
+        if (ciu) reemplazar(ciu, 'select',
+          '<option value="">Elige primero el departamento</option>', 'ciudad');
+      } else {
+        /* Otro país: campos de texto, porque no tenemos sus divisiones */
+        if (dep) reemplazar(dep, 'input', '', 'departamento', 'Escribe el estado o provincia');
+        if (ciu) reemplazar(ciu, 'input', '', 'ciudad', 'Escribe la ciudad');
+      }
+      return;
+    }
+
+    if (ubi === 'departamento') {
+      const cod = e.target.selectedOptions?.[0]?.dataset.cod;
+      const ciu = elDe('ciudad');
+      if (!ciu || ciu.tagName !== 'SELECT') return;
+
+      if (!cod) { ciu.innerHTML = '<option value="">Elige primero el departamento</option>'; return; }
+      ciu.innerHTML = '<option value="">Cargando…</option>';
+      try {
+        const ms = await servicio.listarMunicipios(cod);
+        ciu.innerHTML = '<option value="">Selecciona…</option>' +
+          ms.map((m) => `<option>${seguro.texto(m.nombre)}</option>`).join('');
+      } catch {
+        ciu.innerHTML = '<option value="">No se pudieron cargar</option>';
+      }
+    }
+  });
+
+  /** Cambia un desplegable por un campo de texto, o al revés, sin
+      perder su identificador. */
+  function reemplazar(el, tag, contenido, ubi, marcador) {
+    const nuevo = document.createElement(tag === 'select' ? 'select' : 'input');
+    nuevo.className = 'fi';
+    nuevo.id = el.id;
+    nuevo.dataset.ubi = ubi;
+    if (tag === 'select') nuevo.innerHTML = contenido;
+    else { nuevo.type = 'text'; nuevo.placeholder = marcador || ''; nuevo.autocomplete = 'off'; }
+    el.replaceWith(nuevo);
+  }
+
+  /* ── Habilitar según la llamada ──────────────────────────────── */
+
+  /** El formulario se llena durante la gestión, no en cualquier momento. */
+  function habilitar() {
+    if (!formAgente) return;
+    const hayGestion = telefonia.estado !== 'reposo' || !!ui.pendiente;
+
+    $('formCampos').style.opacity = hayGestion ? '1' : '.5';
+    $('formCampos').querySelectorAll('input, select, textarea')
+      .forEach((el) => { el.disabled = !hayGestion; });
+    $('btnFormGuardar').disabled = !hayGestion;
+    $('formEspera').style.display = hayGestion ? 'none' : '';
+
+    /* El Teléfono 1 llega puesto con el número de la llamada */
+    const tel = formAgente.campos.find((c) => c.clave === 'telefono_1');
+    if (hayGestion && tel) {
+      const el = $('fc' + tel.id);
+      if (el && !el.value && telefonia.numero) el.value = telefonia.numero;
+    }
+  }
+
+  /* ── Guardar ─────────────────────────────────────────────────── */
+
+  $('btnFormGuardar')?.addEventListener('click', async () => {
+    if (!formAgente) return;
+
+    const valores = {};
+    formAgente.campos.forEach((c) => {
+      const el = $('fc' + c.id);
+      if (el) valores[c.id] = String(el.value || '').trim();
     });
 
-    if (falta) { aviso(`El campo "${falta}" es obligatorio.`, 'av-a'); return; }
+    const btn = $('btnFormGuardar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
 
-    servicio.encolarRespuesta({
-      formularioId: formActual.id,
-      formulario: formActual.nombre,
-      campana: formActual.campana,
-      agente: ui.sesion?.nombre || '—',
-      numero, datos,
-    });
-
-    aviso(hayServidor()
-      ? 'Respuesta enviada.'
-      : 'Respuesta guardada. Se envía en cuanto haya conexión con el servidor.', 'av-b');
-    pintarCampos();          // limpia los campos
-    $('formNum').value = '';
-    pintarPendientes();
-    intentarSincronizar();
+    try {
+      await servicio.enviarRespuesta(formAgente.id, {
+        valores,
+        numero: telefonia.numero || ui.pendiente?.numero || null,
+      });
+      pintarCampos();                 // deja los campos en blanco
+      aviso('Formulario guardado.', 'av-b');
+    } catch (e) {
+      /* El servidor devuelve qué campo falta o está mal */
+      aviso(e.message, 'av-a');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar respuesta';
+      habilitar();
+    }
   });
 
   /* ── La cola de pendientes ─────────────────────────────────────── */
@@ -449,5 +548,6 @@ const formularios = (() => {
     }
   });
 
-  return { abrirAgente, abrirDisenador, pintarPendientes };
+  return { abrirAgente, abrirDisenador, pintarPendientes,
+           alCambiarLlamada: habilitar };
 })();

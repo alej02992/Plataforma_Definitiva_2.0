@@ -116,6 +116,7 @@
           <!-- Columna 1: softphone -->
           <div class="col">
             <div class="c">
+              <div id="avisoMicro" style="display:none;margin-bottom:10px"></div>
               <div class="c-h">
                 <div class="est est-off" id="estAg"><span class="d"></span><span id="estAgTx">Sin conectar</span></div>
                 <span class="t o" id="spTag">En reposo</span>
@@ -307,9 +308,21 @@
             </div>
 
 
+            <div class="c" id="tarjetaForm">
+              <div class="c-h">
+                <h2 id="formTitulo">Formulario de la gestión</h2>
+                <span class="t o" id="formCampana">—</span>
+              </div>
+              <p class="c-sub">Se habilita durante la llamada. El teléfono llega puesto.</p>
+              <div id="formEspera" class="vacio">Aparece al entrar o salir una llamada.</div>
+              <div id="formCampos"></div>
+              <button class="b b-teal b-w" id="btnFormGuardar" style="display:none;margin-top:8px">
+                Guardar respuesta</button>
+            </div>
+
             <div class="c">
-              <div class="c-h"><h2>Colas de llamadas</h2><span class="t o" id="pendN">0</span></div>
-              <p class="c-sub">LLamadas en cola.</p>
+              <div class="c-h"><h2>Pendientes de envío</h2><span class="t o" id="pendN">0</span></div>
+              <p class="c-sub">Respuestas guardadas en este equipo que aún no se han enviado.</p>
               <div id="listaPend"><div class="vacio">No hay respuestas pendientes.</div></div>
               <button class="b b-gh b-w b-sm" id="btnSincronizar" style="margin-top:9px">Enviar pendientes</button>
             </div>
@@ -739,21 +752,25 @@
   </div>
 </div>
 
-<!-- Elementos del módulo de formularios. La tarjeta se retiró del
-     escritorio del agente, pero el módulo sigue cargado para el
-     diseñador del superadministrador. -->
-<div id="formOculto" style="display:none">
-  <span id="formCampana"></span>
-  <select id="selForm"></select>
-  <input id="formNum">
-  <div id="formCampos"></div>
+
   <button id="btnFormGuardar"></button>
 </div>
 
 <audio id="audioRemoto" autoplay style="display:none"></audio>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     El orden importa:
+       1. config.js       ← el único archivo que hay que editar
+       2. sip.js          la librería SIP
+       3. servicio.js     usuarios, credenciales y datos
+       4. telefonia.js    el módulo de llamadas
+       5. supervision.js  el panel del supervisor
+       6. formularios.js  captura y diseñador
+       7. pantalla.js     la interfaz que lo une todo
+     ═══════════════════════════════════════════════════════════════ -->
 <script src="js/config.js"></script>
 <script src="lib/sip.js"></script>
+<script src="js/seguro.js"></script>
 <script src="js/servicio.js"></script>
 <script src="js/telefonia.js"></script>
 <script src="js/supervision.js"></script>
