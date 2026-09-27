@@ -40,10 +40,12 @@ const administracion = (() => {
      SUPERVISOR · HORARIOS Y DISTRIBUCIÓN
      ═══════════════════════════════════════════════════════════════ */
 
+  /* La distribución de agentes se movió a Usuarios y roles: necesita la
+     lista completa de usuarios, que es permiso de administrador, y el
+     supervisor la veía siempre vacía. */
   async function abrirCampanas() {
     campanas = await servicio.listarCampanas();
     pintarHorarios();
-    await pintarDistribucion();
   }
 
   function pintarHorarios() {
@@ -515,6 +517,7 @@ const administracion = (() => {
   let usuarios = [];        // lo que se está mostrando
 
   async function abrirUsuarios() {
+    await pintarDistribucion();
     const cs = await servicio.listarCampanas();
     $$('usrCampana').innerHTML = cs.map((c) =>
       `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');

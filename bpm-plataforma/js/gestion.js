@@ -20,11 +20,30 @@ const gestionEstados = (() => {
     await pintar();
   }
 
+  let puedeGeneral = false;      // solo el administrador
+
+  /* El supervisor solo administra sus campañas: su desplegable trae las
+     suyas y no incluye "Todas". El servidor lo comprueba igual. */
   async function llenarCampanas() {
-    let cs = [];
-    try { cs = await servicio.listarCampanas(); } catch { /* queda solo "todas" */ }
-    $e('estCampana').innerHTML = '<option value="">Todas las campañas</option>' +
-      cs.map((c) => `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
+    let r = { general: false, campanas: [] };
+    try { r = await servicio.campanasDeEstados(); } catch { /* queda vacío */ }
+
+    puedeGeneral = !!r.general;
+    const opciones = r.campanas
+      .map((c) => `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
+
+    $e('estCampana').innerHTML = puedeGeneral
+      ? '<option value="">Todas las campañas</option>' + opciones
+      : opciones;
+
+    /* Sin campañas asignadas no puede crear: se dice por qué. */
+    const sinCampanas = !puedeGeneral && !r.campanas.length;
+    $e('estCampana').disabled = sinCampanas;
+    $e('estNuevo').disabled = sinCampanas;
+    $e('btnEstCrear').disabled = sinCampanas;
+    if (sinCampanas) {
+      $e('estCampana').innerHTML = '<option>Sin campañas asignadas</option>';
+    }
   }
 
   async function pintar() {
@@ -39,7 +58,10 @@ const gestionEstados = (() => {
       return;
     }
 
-    $e('estN').textContent = `${lista.filter((t) => t.activo).length} activos`;
+    const mios = lista.filter((t) => t.editable).length;
+    $e('estN').textContent = puedeGeneral
+      ? `${lista.filter((t) => t.activo).length} activos`
+      : `${mios} de tus campañas`;
 
     if (!lista.length) {
       $e('tablaEstados').innerHTML = '<div class="vacio">Todavía no hay estados creados.</div>';
@@ -53,11 +75,13 @@ const gestionEstados = (() => {
         <td>${t.campana_id ? seguro.texto(t.campana) : 'Todas'}</td>
         <td><span class="t ${t.activo ? 'g' : 'o'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
         <td style="text-align:right;white-space:nowrap">
-          <button class="b ${t.activo ? 'b-gh' : 'b-teal'} b-sm"
-                  data-est="${seguro.texto(t.id)}" data-act="${t.activo ? 0 : 1}">
-            ${t.activo ? 'Desactivar' : 'Activar'}</button>
-          <button class="b b-red b-sm" data-borrar="${seguro.texto(t.id)}"
-                  title="Solo si nunca se ha usado">Eliminar</button>
+          ${t.editable ? `
+            <button class="b ${t.activo ? 'b-gh' : 'b-teal'} b-sm"
+                    data-est="${seguro.texto(t.id)}" data-act="${t.activo ? 0 : 1}">
+              ${t.activo ? 'Desactivar' : 'Activar'}</button>
+            <button class="b b-red b-sm" data-borrar="${seguro.texto(t.id)}"
+                    title="Solo si nunca se ha usado">Eliminar</button>`
+          : `<span class="t o" title="Lo administra el superadministrador">General</span>`}
         </td></tr>`).join('')}</table>`;
   }
 

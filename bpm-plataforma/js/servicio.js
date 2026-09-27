@@ -384,6 +384,10 @@ const servicio = (() => {
     catch (e) { return { ok: false, error: e.message }; }
   }
 
+  /** Campañas sobre las que el usuario puede crear estados. El
+      administrador recibe todas y puede además crear generales. */
+  const campanasDeEstados = () => api('GET', '/pausas/campanas');
+
   /** Elimina un estado. Solo funciona si nunca se usó; si ya tiene
       pausas registradas, el servidor lo impide para no perder el
       historial y hay que desactivarlo. */
@@ -619,12 +623,11 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
-    listarEstados, crearEstado, activarEstado, eliminarEstado,
+    listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
