@@ -384,6 +384,20 @@ const servicio = (() => {
     catch (e) { return { ok: false, error: e.message }; }
   }
 
+  /* ── Campañas a cargo y alta masiva ── */
+
+  const campanasDeUsuario = (id) => api('GET', '/usuarios/' + id + '/campanas');
+
+  async function guardarCampanasDeUsuario(id, campanas) {
+    try { await api('PUT', '/usuarios/' + id + '/campanas', { campanas }); return { ok: true }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
+  /** Con revisar=true no crea nada: devuelve qué filas están bien y
+      cuáles tienen errores, para mostrarlo antes de confirmar. */
+  const altaMasiva = (filas, revisar = true) =>
+    api('POST', '/usuarios/masivo', { filas, revisar });
+
   /** Campañas sobre las que el usuario puede crear estados. El
       administrador recibe todas y puede además crear generales. */
   const campanasDeEstados = () => api('GET', '/pausas/campanas');
@@ -623,11 +637,13 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,

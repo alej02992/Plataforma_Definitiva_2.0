@@ -617,8 +617,10 @@
             <div class="f"><label>Usuario</label><input class="fi mono" id="usrUsuario"></div>
           </div>
           <div class="rej rej-2">
+            <div class="f"><label>Correo</label>
+              <input class="fi" id="usrCorreo" type="email" placeholder="nombre@bpmconsulting.com.co" autocomplete="off"></div>
             <div class="f"><label>Extensión SIP</label><input class="fi mono" id="usrExt" placeholder="1003"></div>
-            <div class="f"><label>Campaña</label><select class="fi" id="usrCampana"></select></div>
+            <div class="f"><label>Campaña principal</label><select class="fi" id="usrCampana"></select></div>
           </div>
           <div class="f"><label>Rol</label>
             <div class="tabs" id="usrRol">
@@ -627,6 +629,14 @@
               <button class="tab" data-t="admin">Superadmin</button>
             </div>
           </div>
+          <!-- Un supervisor puede tener varias campañas a cargo: de aquí
+               salen los agentes que ve y los estados que puede crear. -->
+          <div class="f" id="usrCampanasBox" style="display:none">
+            <label>Campañas a cargo</label>
+            <div id="usrCampanas" class="campanas-cargo"></div>
+            <div class="hint">Marca todas las que supervisa. La principal se marca sola.</div>
+          </div>
+
           <div class="aviso av-b" id="usrNotaClave">
             <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <div>No tienes que definir una contraseña. El sistema asigna una
@@ -655,6 +665,23 @@
               <div class="hint">El cambio se aplica al terminar la llamada en curso.</div>
             </div>
           </div>
+        </div>
+        <div class="c">
+          <div class="c-h"><h2>Alta masiva de usuarios</h2>
+            <span class="t o" id="masN">—</span></div>
+          <p class="c-sub">Para dar de alta muchas personas de una vez. Sube el archivo,
+            revisa lo que se va a crear y confirma.</p>
+
+          <div class="ctrls" style="margin-bottom:10px">
+            <label class="b b-gh" style="cursor:pointer">
+              Elegir archivo
+              <input type="file" id="masArchivo" accept=".csv,.txt" style="display:none">
+            </label>
+            <button class="b b-teal" id="masCrear" style="display:none">Crear los usuarios</button>
+            <button class="b b-gh" id="masPlantilla">Descargar plantilla</button>
+          </div>
+
+          <div id="masResultado"><div class="vacio">Aún no has subido ningún archivo.</div></div>
         </div>
       </section>
 

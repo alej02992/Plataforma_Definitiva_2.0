@@ -638,6 +638,7 @@ const administracion = (() => {
     $$('usrNombre').value = u.nombre || '';
     $$('usrUsuario').value = u.usuario || '';
     $$('usrUsuario').disabled = !!u.id;       // el usuario no se renombra
+    $$('usrCorreo').value = u.correo || '';
     $$('usrExt').value = u.extension || '';
     if (u.campana_id != null) $$('usrCampana').value = String(u.campana_id);
     document.querySelectorAll('#usrRol .tab').forEach((t) =>
@@ -646,13 +647,45 @@ const administracion = (() => {
     /* Al crear, se avisa qué contraseña se le entregará */
     const nota = $$('usrNotaClave');
     if (nota) nota.style.display = u.id ? 'none' : '';
+
+    pintarCampanasACargo(u);
   }
+
+  /* ── Campañas a cargo ───────────────────────────────────────────
+     Solo tienen sentido para supervisores: de ahí salen los agentes que
+     ve, las grabaciones que escucha y los estados que puede crear. */
+
+  async function pintarCampanasACargo(u) {
+    const caja = $$('usrCampanasBox');
+    if (!caja) return;
+
+    const esSupervisor = (u.rol || 'agente') === 'supervisor';
+    caja.style.display = esSupervisor ? '' : 'none';
+    if (!esSupervisor) return;
+
+    let asignadas = [];
+    if (u.id) {
+      try { asignadas = await servicio.campanasDeUsuario(u.id); } catch { /* ninguna */ }
+    }
+    const marcadas = new Set(asignadas.map((c) => c.id));
+    if (u.campana_id) marcadas.add(Number(u.campana_id));
+
+    const cs = await servicio.listarCampanas();
+    $$('usrCampanas').innerHTML = cs.map((c) => `
+      <label><input type="checkbox" value="${seguro.texto(c.id)}"${marcadas.has(c.id) ? ' checked' : ''}>
+        ${seguro.texto(c.nombre)}</label>`).join('') ||
+      '<div class="vacio">No hay campañas activas.</div>';
+  }
+
+  const campanasMarcadas = () =>
+    [...$$('usrCampanas').querySelectorAll('input:checked')].map((i) => Number(i.value));
 
   $$('usrRol')?.addEventListener('click', (e) => {
     const t = e.target.closest('.tab');
     if (!t || !editandoUsr) return;
     editandoUsr.rol = t.dataset.t;
     document.querySelectorAll('#usrRol .tab').forEach((x) => x.classList.toggle('on', x === t));
+    pintarCampanasACargo(editandoUsr);      // las campañas solo aplican al supervisor
   });
 
   $$('btnUsrGuardar')?.addEventListener('click', async () => {
@@ -662,6 +695,7 @@ const administracion = (() => {
       id: editandoUsr.id,
       usuario: $$('usrUsuario').value.trim().toLowerCase(),
       nombre: $$('usrNombre').value.trim(),
+      correo: $$('usrCorreo').value.trim(),
       extension: $$('usrExt').value.trim(),
       campana_id: Number($$('usrCampana').value) || null,
       campana: $$('usrCampana').selectedOptions[0]?.textContent || '',
@@ -674,11 +708,20 @@ const administracion = (() => {
     if (datos.extension && !/^\d{3,6}$/.test(datos.extension)) {
       aviso('La extensión debe ser un número de 3 a 6 dígitos.', 'av-a'); return;
     }
+    if (datos.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.correo)) {
+      aviso('El correo no parece válido.', 'av-a'); return;
+    }
 
     const btn = $$('btnUsrGuardar');
     btn.disabled = true; btn.textContent = 'Guardando…';
 
     const r = await servicio.guardarUsuarioRemoto(datos);
+
+    /* Las campañas a cargo van aparte: viven en su propia tabla */
+    if (r.ok && datos.rol === 'supervisor') {
+      const id = datos.id || r.id;
+      if (id) await servicio.guardarCampanasDeUsuario(id, campanasMarcadas());
+    }
 
     btn.disabled = false; btn.textContent = 'Guardar';
     if (!r.ok) { aviso(r.error, 'av-a'); return; }
@@ -710,6 +753,178 @@ const administracion = (() => {
   /* La contraseña temporal la define el backend. Este valor es solo
      informativo para el mensaje que ve el administrador. */
   const CLAVE_TEMPORAL = 'BpmTemp2026#';
+
+  /* ═══════════════════════════════════════════════════════════════
+     SUPERADMIN · ALTA MASIVA DE USUARIOS
+
+     Para dar de alta muchas personas de una vez. El administrador
+     exporta desde Excel un archivo separado por comas y lo sube.
+
+     Se hace en dos pasos a propósito: primero una revisión que no
+     escribe nada y muestra fila por fila qué está bien y qué está mal,
+     y solo después la creación. Con 300 filas, descubrir los errores
+     después de crearlas sería mucho peor.
+     ═══════════════════════════════════════════════════════════════ */
+
+  const COLUMNAS = ['usuario', 'nombre', 'correo', 'extension', 'campana', 'rol'];
+  let filasMasivas = [];
+
+  /** Lee el texto del archivo. Acepta coma o punto y coma como
+      separador —Excel en español usa punto y coma— y comillas. */
+  function leerCsv(texto) {
+    const limpio = texto.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
+    if (!limpio) return { error: 'El archivo está vacío' };
+
+    const lineas = limpio.split('\n').filter((l) => l.trim());
+    const sep = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ';' : ',';
+
+    const partir = (linea) => {
+      const celdas = []; let actual = ''; let entreComillas = false;
+      for (let i = 0; i < linea.length; i++) {
+        const c = linea[i];
+        if (c === '"') {
+          if (entreComillas && linea[i + 1] === '"') { actual += '"'; i++; }
+          else entreComillas = !entreComillas;
+        } else if (c === sep && !entreComillas) { celdas.push(actual); actual = ''; }
+        else actual += c;
+      }
+      celdas.push(actual);
+      return celdas.map((x) => x.trim());
+    };
+
+    const cabecera = partir(lineas[0]).map((h) =>
+      h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+
+    const faltan = ['usuario', 'nombre'].filter((c) => !cabecera.includes(c));
+    if (faltan.length) {
+      return { error: `Al archivo le faltan columnas obligatorias: ${faltan.join(', ')}. ` +
+                      'Descarga la plantilla para ver el formato.' };
+    }
+
+    const filas = lineas.slice(1).map((l) => {
+      const celdas = partir(l);
+      const fila = {};
+      COLUMNAS.forEach((col) => {
+        const i = cabecera.indexOf(col);
+        fila[col] = i >= 0 ? (celdas[i] || '') : '';
+      });
+      return fila;
+    }).filter((f) => f.usuario || f.nombre);
+
+    return filas.length ? { filas } : { error: 'El archivo no tiene filas con datos' };
+  }
+
+  $$('masArchivo')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    e.target.value = '';                    // permite volver a subir el mismo
+
+    const texto = await archivo.text();
+    const { filas, error } = leerCsv(texto);
+
+    if (error) {
+      filasMasivas = [];
+      $$('masCrear').style.display = 'none';
+      $$('masN').textContent = '—';
+      $$('masResultado').innerHTML =
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(error)}</div></div>`;
+      return;
+    }
+
+    $$('masResultado').innerHTML = `<div class="vacio">Revisando ${filas.length} filas…</div>`;
+
+    let r;
+    try {
+      r = await servicio.altaMasiva(filas, true);     // revisar, sin crear
+    } catch (err) {
+      $$('masResultado').innerHTML =
+        `<div class="aviso av-r" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(err.message)}</div></div>`;
+      return;
+    }
+
+    filasMasivas = filas;
+    pintarRevision(r);
+  });
+
+  function pintarRevision(r) {
+    $$('masN').textContent = `${r.correctas} de ${r.total}`;
+    $$('masCrear').style.display = r.correctas ? '' : 'none';
+    $$('masCrear').textContent = `Crear ${r.correctas} usuario(s)`;
+
+    const resumen = r.conError
+      ? `<div class="aviso av-a" style="margin:0 0 10px">
+           <svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+           <div>${r.correctas} fila(s) listas y ${r.conError} con problemas.
+           Solo se crearán las correctas; corrige el archivo y vuelve a subirlo
+           si quieres las demás.</div></div>`
+      : `<div class="aviso av-b" style="margin:0 0 10px">
+           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+           <div>Las ${r.correctas} filas están correctas.</div></div>`;
+
+    $$('masResultado').innerHTML = resumen + `<div style="overflow-x:auto"><table class="tb">
+      <tr><th>Línea</th><th>Usuario</th><th>Nombre</th><th>Correo</th><th>Ext.</th>
+          <th>Campaña</th><th>Rol</th><th>Revisión</th></tr>
+      ${r.filas.map((f) => `<tr${f.errores.length ? ' style="background:var(--danger-l)"' : ''}>
+        <td class="mono">${seguro.texto(f.linea)}</td>
+        <td class="mono">${seguro.celda(f.usuario)}</td>
+        <td>${seguro.celda(f.nombre)}</td>
+        <td>${seguro.celda(f.correo)}</td>
+        <td class="mono">${seguro.celda(f.extension)}</td>
+        <td>${seguro.celda(f.campana)}</td>
+        <td>${seguro.celda(f.rol)}</td>
+        <td>${f.errores.length
+          ? `<span class="mas-error">${seguro.texto(f.errores.join('. '))}</span>`
+          : '<span class="mas-ok">Lista</span>'}</td>
+      </tr>`).join('')}</table></div>`;
+  }
+
+  $$('masCrear')?.addEventListener('click', async () => {
+    if (!filasMasivas.length) return;
+
+    const btn = $$('masCrear');
+    btn.disabled = true; btn.textContent = 'Creando…';
+
+    let r;
+    try {
+      r = await servicio.altaMasiva(filasMasivas, false);
+    } catch (e) {
+      aviso('No se pudo completar: ' + e.message, 'av-a');
+      btn.disabled = false; btn.textContent = 'Crear los usuarios';
+      return;
+    }
+
+    btn.disabled = false;
+    btn.style.display = 'none';
+    filasMasivas = [];
+
+    await recargarUsuarios();
+
+    const fallos = r.fallidos?.length
+      ? `<br>${r.fallidos.length} fila(s) fallaron al crearse: ` +
+        seguro.texto(r.fallidos.map((f) => `línea ${f.linea}`).join(', '))
+      : '';
+    $$('masResultado').innerHTML = `<div class="aviso av-b" style="margin:0">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      <div><b>${r.creados} usuario(s) creados.</b> Todos entran con la contraseña
+      <b>${seguro.texto(r.claveTemporal)}</b> y deberán cambiarla al ingresar.${fallos}</div></div>`;
+    $$('masN').textContent = `${r.creados} creados`;
+  });
+
+  /* La plantilla evita la mitad de los errores: el administrador parte
+     del formato correcto en lugar de adivinarlo. */
+  $$('masPlantilla')?.addEventListener('click', () => {
+    const ejemplo = [
+      COLUMNAS.join(';'),
+      'jperez;Juan Pérez;jperez@bpmconsulting.com.co;1101;Ventas;agente',
+      'mlopez;María López;mlopez@bpmconsulting.com.co;1102;Ventas;agente',
+      'csoto;Carlos Soto;csoto@bpmconsulting.com.co;;Ventas;supervisor',
+    ].join('\r\n');
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + ejemplo], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'plantilla_usuarios.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
 
   /* ═══════════════════════════════════════════════════════════════
      SUPERADMIN · MÓDULOS
