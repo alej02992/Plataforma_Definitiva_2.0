@@ -18,6 +18,7 @@ const gestionEstados = (() => {
     if (!$e('tablaEstados')) return;
     await llenarCampanas();
     await pintar();
+    vigilar(true);
   }
 
   let puedeGeneral = false;      // solo el administrador
@@ -69,10 +70,11 @@ const gestionEstados = (() => {
     }
 
     $e('tablaEstados').innerHTML = `<table class="tb">
-      <tr><th>Estado</th><th>Campaña</th><th>Situación</th><th></th></tr>
+      <tr><th>Estado</th><th>Campaña</th><th>Duración</th><th>Situación</th><th></th></tr>
       ${lista.map((t) => `<tr>
         <td><b>${seguro.texto(t.nombre)}</b></td>
         <td>${t.campana_id ? seguro.texto(t.campana) : 'Todas'}</td>
+        <td class="mono">${t.limite_minutos ? seguro.texto(t.limite_minutos) + ' min' : 'Sin límite'}</td>
         <td><span class="t ${t.activo ? 'g' : 'o'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
         <td style="text-align:right;white-space:nowrap">
           ${t.editable ? `
@@ -95,15 +97,18 @@ const gestionEstados = (() => {
 
     const btn = $e('btnEstCrear');
     btn.disabled = true;
-    const r = await servicio.crearEstado(nombre, Number($e('estCampana').value) || null);
+    const minutos = Number($e('estMinutos').value) || null;
+    const r = await servicio.crearEstado(nombre, Number($e('estCampana').value) || null, minutos);
     btn.disabled = false;
 
     if (!r.ok) { aviso(r.error, 'av-a'); return; }
 
     const destino = $e('estCampana').selectedOptions[0]?.textContent || 'todas las campañas';
     $e('estNuevo').value = '';
+    $e('estMinutos').value = '';
     await pintar();
-    aviso(`Estado "${nombre}" creado para ${destino.toLowerCase()}. ` +
+    aviso(`Estado "${nombre}" creado para ${destino.toLowerCase()}` +
+          (minutos ? `, con ${minutos} minutos de duración. ` : '. ') +
           'Los agentes lo ven en menos de un minuto.', 'av-b');
   }
 
@@ -145,5 +150,59 @@ const gestionEstados = (() => {
     if (ev.key === 'Enter' && ev.target && ev.target.id === 'estNuevo') crear();
   });
 
-  return { abrir };
+  /* ── Quiénes se pasaron del tiempo ────────────────────────────────
+     El cálculo lo hace el servidor, para que todos vean lo mismo sin
+     depender del reloj de cada equipo. */
+
+  let revisor = null;
+
+  async function revisarExcedidas() {
+    if (!$e('tablaExcedidas')) return;
+
+    let lista;
+    try { lista = await servicio.pausasExcedidas(); } catch { return; }
+
+    const caja = $e('tarjetaExcedidas');
+
+    if (!lista.length) {
+      caja.style.display = 'none';
+      $e('excN').textContent = '0';
+      return;
+    }
+
+    caja.style.display = '';
+    $e('excN').textContent = lista.length;
+
+    const reloj = (s) => {
+      const m = Math.floor(s / 60);
+      return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+    };
+
+    $e('tablaExcedidas').innerHTML = `<table class="tb">
+      <tr><th>Agente</th><th>Ext.</th><th>Campaña</th><th>Estado</th>
+          <th>Permitido</th><th>Lleva</th><th>Excedido</th></tr>
+      ${lista.map((a) => `<tr>
+        <td><b>${seguro.texto(a.nombre)}</b></td>
+        <td class="mono">${seguro.celda(a.extension)}</td>
+        <td>${seguro.celda(a.campana)}</td>
+        <td><span class="t a">${seguro.texto(a.estado)}</span></td>
+        <td class="mono">${seguro.texto(a.limite_minutos)} min</td>
+        <td class="mono">${reloj(a.segundos)}</td>
+        <td class="mono" style="color:var(--danger);font-weight:700">+${reloj(a.excedido)}</td>
+      </tr>`).join('')}</table>`;
+  }
+
+  /* Solo se consulta mientras la vista está abierta */
+  function vigilar(encender) {
+    if (revisor) { clearInterval(revisor); revisor = null; }
+    if (!encender) return;
+    revisarExcedidas();
+    revisor = setInterval(() => {
+      const v = document.querySelector('.vista.on');
+      if (v && v.dataset.v === 'campanas') revisarExcedidas();
+      else vigilar(false);
+    }, 15000);
+  }
+
+  return { abrir, vigilar, revisarExcedidas };
 })();

@@ -462,6 +462,15 @@
 
       <!-- ══════ GESTIÓN DE CAMPAÑAS · supervisor ══════ -->
       <section class="vista" data-v="campanas">
+        <!-- Agentes que llevan más tiempo del permitido en su estado.
+             Se actualiza solo cada 15 segundos. -->
+        <div class="c" id="tarjetaExcedidas" style="display:none">
+          <div class="c-h"><h2>Agentes pasados de tiempo</h2>
+            <span class="t r" id="excN">0</span></div>
+          <p class="c-sub">Llevan más de lo permitido sin volver a Disponible.</p>
+          <div id="tablaExcedidas"></div>
+        </div>
+
         <div class="c">
           <div class="c-h"><h2>Estados de pausa</h2><span class="t o" id="estN">—</span></div>
           <p class="c-sub">Los estados activos aparecen como botón en el panel de los
@@ -474,6 +483,12 @@
             <div class="f" style="margin:0">
               <label>Campaña</label>
               <select class="fi" id="estCampana"><option value="">Todas las campañas</option></select>
+            </div>
+            <div class="f" style="margin:0">
+              <label>Duración máxima</label>
+              <input class="fi mono" id="estMinutos" type="number" min="1" max="480"
+                     placeholder="minutos" autocomplete="off">
+              <div class="hint">Vacío = sin límite</div>
             </div>
           </div>
           <div class="ctrls"><button class="b b-teal" id="btnEstCrear">Crear y activar</button></div>

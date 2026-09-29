@@ -74,6 +74,9 @@ const tonos = (() => {
       ciclo(); intervalo = setInterval(ciclo, 3000); },
     llamando() { this.parar();
       const ciclo = () => sonar([440], 1, .06); ciclo(); intervalo = setInterval(ciclo, 4000); },
+    /* Aviso corto de dos notas, distinto de los tonos de llamada para
+       que no se confunda con una entrante. */
+    aviso() { sonar([660], .12, .1); setTimeout(() => sonar([880], .18, .1), 150); },
     parar() { if (intervalo) clearInterval(intervalo); intervalo = null;
       activos.forEach((o) => { try { o.stop(); } catch (_) {} }); activos = []; },
   };
@@ -88,7 +91,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Llamadas', permiso:'softphone',
+  { v:'escritorio', et:'Telefonía', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -637,6 +640,44 @@ setInterval(() => {
   if (ui.sesion && $('app').classList.contains('on')) cargarEstados();
 }, 30000);
 
+/* ── Reloj de la pausa ─────────────────────────────────────────────
+   Si el estado tiene duración máxima, se avisa dos minutos antes de que
+   se acabe y otra vez al pasarse. La idea es que el agente vuelva solo,
+   antes de que el supervisor tenga que reclamarle. */
+
+let relojPausa = null;
+
+function vigilarPausa(motivo, limiteMinutos) {
+  clearInterval(relojPausa);
+  relojPausa = null;
+  if (!limiteMinutos) return;         // sin límite, no hay nada que vigilar
+
+  const limite = limiteMinutos * 60;
+  const inicio = Date.now();
+  let avisadoAntes = false;
+  let avisadoFin = false;
+
+  relojPausa = setInterval(() => {
+    if (ui.pausa !== motivo) { clearInterval(relojPausa); relojPausa = null; return; }
+
+    const van = Math.floor((Date.now() - inicio) / 1000);
+    const faltan = limite - van;
+
+    if (!avisadoAntes && faltan <= 120 && faltan > 0) {
+      avisadoAntes = true;
+      aviso(`Te quedan 2 minutos de ${motivo}.`, 'av-a');
+      tonos.aviso?.();
+    }
+    if (!avisadoFin && faltan <= 0) {
+      avisadoFin = true;
+      aviso(`Se acabó el tiempo de ${motivo}. Vuelve a Disponible.`, 'av-r');
+      tonos.aviso?.();
+    }
+    /* Pasado el tiempo, el estado se muestra en rojo */
+    if (faltan <= 0) $('estAg').classList.add('vencido');
+  }, 1000);
+}
+
 /** Pone al agente en el estado indicado. */
 function entrarEnPausa(motivo, boton) {
   ui.pausa = motivo;
@@ -653,7 +694,10 @@ function entrarEnPausa(motivo, boton) {
       aviso(r.error || 'No se pudo registrar la pausa.', 'av-a');
       $('btnDisponible').click();
       cargarEstados();
+      return;
     }
+    /* El servidor devuelve la duración del estado */
+    vigilarPausa(motivo, r && r.limite_minutos);
   });
 }
 
@@ -668,6 +712,8 @@ $('pausas').addEventListener('click', (e) => {
 });
 
 $('btnDisponible').addEventListener('click', () => {
+  clearInterval(relojPausa); relojPausa = null;
+  $('estAg').classList.remove('vencido');
   ui.pausa = null; telefonia.pausa = null;
   document.querySelectorAll('.pz').forEach((x) => x.classList.remove('on'));
   marcarEstadoAgente(telefonia.registrado ? 'Disponible' : 'Sin conectar');

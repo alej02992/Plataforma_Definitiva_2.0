@@ -591,3 +591,9 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 /* ══════════ ALTA MASIVA ══════════ */
 .mas-error{color:var(--danger);font-size:11px}
 .mas-ok{color:var(--ok)}
+
+/* ══════════ ESTADO PASADO DE TIEMPO ══════════
+   El agente ve su estado en rojo cuando superó la duración permitida. */
+.est.vencido{background:var(--danger-l) !important;color:var(--danger) !important;
+  border-color:var(--danger) !important}
+.est.vencido .d{background:var(--danger) !important}

@@ -374,10 +374,15 @@ const servicio = (() => {
   const listarEstados = (todos = false) =>
     api('GET', '/pausas/tipos' + (todos ? '?todos=1' : ''));
 
-  async function crearEstado(nombre, campana_id = null) {
-    try { return { ok: true, ...(await api('POST', '/pausas/tipos', { nombre, campana_id, activo: true })) }; }
-    catch (e) { return { ok: false, error: e.message }; }
+  async function crearEstado(nombre, campana_id = null, limite_minutos = null) {
+    try {
+      return { ok: true, ...(await api('POST', '/pausas/tipos',
+        { nombre, campana_id, limite_minutos, activo: true })) };
+    } catch (e) { return { ok: false, error: e.message }; }
   }
+
+  /** Agentes que llevan más tiempo del permitido en su estado. */
+  const pausasExcedidas = () => api('GET', '/pausas/excedidas');
 
   async function activarEstado(id, activo) {
     try { await api('PUT', '/pausas/tipos/' + id, { activo }); return { ok: true }; }
@@ -458,10 +463,14 @@ const servicio = (() => {
   }
 
   /** Inicio o fin de una pausa. */
+  /** Entra o sale de pausa. Al entrar, el servidor devuelve la
+      duración máxima del estado para que la plataforma avise. */
   async function registrarPausa(tipo, entrando) {
     if (hayApi()) {
-      try { await api('POST', '/pausas', { tipo, entrando }); return { ok: true }; }
-      catch (e) { return { ok: false, error: e.message }; }
+      try {
+        const d = await api('POST', '/pausas', { tipo, entrando });
+        return { ok: true, limite_minutos: d?.limite_minutos ?? null };
+      } catch (e) { return { ok: false, error: e.message }; }
     }
     return { ok: true };
   }
@@ -643,6 +652,7 @@ const servicio = (() => {
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    pausasExcedidas,
     campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
