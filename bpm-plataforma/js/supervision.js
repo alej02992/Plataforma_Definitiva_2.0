@@ -25,9 +25,11 @@ const supervision = (() => {
   /* Estado que se muestra. Se rellena con lo que responde el backend.
      Si no hay backend, queda vacío: no se inventan agentes. */
   let estado = { agentes: [], kpis: null, telefonia: null };
+  let campanas = [];                 // del servidor, no de datos locales
   let consultando = false;
 
-  function iniciar() {
+  async function iniciar() {
+    await cargarCampanas();
     llenarFiltro();
     llenarReportes();
     refrescar();                       // primera consulta inmediata
@@ -47,6 +49,12 @@ const supervision = (() => {
     intervalo = null;
   }
 
+  /** Las campañas se piden una vez al abrir la vista: cambian poco y
+      no tiene sentido traerlas cada tres segundos. */
+  async function cargarCampanas() {
+    try { campanas = await servicio.listarCampanas(); } catch { campanas = []; }
+  }
+
   /** Pide el estado al backend y repinta. */
   async function refrescar() {
     if (consultando) return;           // evita solapar consultas lentas
@@ -58,7 +66,10 @@ const supervision = (() => {
       avisoTelefonia(v.telefonia);
       pintar();
     } catch (e) {
+      /* Aunque falle el estado en vivo, las campañas se siguen viendo:
+         son datos distintos y el supervisor los necesita igual. */
       mostrarError(e.message);
+      pintarCampanas();
     } finally {
       consultando = false;
     }
@@ -163,23 +174,41 @@ const supervision = (() => {
       </tr>`).join('')}</table>`;
   }
 
+  /* Todas las campañas activas, estén o no recibiendo llamadas: si hay
+     gente conectada a una, el supervisor necesita verla. */
   function pintarCampanas() {
-    const hor = servicio.horarios();
+    if (!campanas.length) {
+      $('tablaCampanas').innerHTML =
+        '<div class="vacio">No hay campañas activas.</div>';
+      return;
+    }
+
+    /* Cuántos agentes conectados tiene cada una */
+    const conectados = {};
+    estado.agentes.forEach((a) => {
+      const k = a.campana || '—';
+      conectados[k] = (conectados[k] || 0) + 1;
+    });
+
+    const hora = (h) => (h || '').slice(0, 5) || '—';
+
     $('tablaCampanas').innerHTML = `<table class="tb">
-      <tr><th>Campaña</th><th>Horario</th><th>Días</th><th>Estado</th><th></th></tr>
-      ${servicio.campanas.map((c) => {
-        const h = hor.find((x) => x.campana === c.nombre) || {};
-        const abierto = !!h.abierto;
+      <tr><th>Campaña</th><th>Horario</th><th>Conectados</th><th>Estado</th><th></th></tr>
+      ${campanas.map((c) => {
+        const abierta = !!c.abierta;
+        const n = conectados[c.nombre] || 0;
         return `<tr>
-          <td><b>${seguro.texto(c.nombre)}</b><br><span style="font-size:10.5px;color:var(--ink-3)">${seguro.texto(c.tipo)}</span></td>
-          <td class="mono">${seguro.celda(h.inicio)} a ${seguro.celda(h.fin)}</td>
-          <td>${seguro.celda(h.dias)}</td>
-          <td><span class="t ${abierto ? 'g' : 'o'}">${abierto ? 'Abierto' : 'Cerrado'}</span></td>
-          <td><button class="b ${abierto ? 'b-gh' : 'b-teal'} b-sm" data-hor="${seguro.texto(h.id)}">
-            ${abierto ? 'Cerrar' : 'Abrir'}</button></td>
+          <td><b>${seguro.texto(c.nombre)}</b><br>
+              <span style="font-size:10.5px;color:var(--ink-3)">${seguro.texto(c.tipo)}${c.did ? ' · ' + seguro.texto(c.did) : ''}</span></td>
+          <td class="mono">${hora(c.hora_apertura)} a ${hora(c.hora_cierre)}</td>
+          <td class="mono">${n ? `<b>${n}</b> agente${n === 1 ? '' : 's'}` : '—'}</td>
+          <td><span class="t ${abierta ? 'g' : 'o'}">${abierta ? 'Abierta' : 'Cerrada'}</span></td>
+          <td><button class="b ${abierta ? 'b-gh' : 'b-teal'} b-sm" data-hor="${seguro.texto(c.id)}">
+            ${abierta ? 'Cerrar' : 'Abrir'}</button></td>
         </tr>`;
       }).join('')}</table>`;
   }
+
 
   /** Abrir o cerrar el horario de una campaña. */
   function alternarHorario(id) {
@@ -194,11 +223,12 @@ const supervision = (() => {
 
   /* ═══════════ FILTRO POR CAMPAÑA ═══════════ */
   function llenarFiltro() {
-    const s = $('filtroCampana');
-    s.innerHTML = '<option value="Todas">Todas las campañas</option>' +
-      servicio.campanas.map((c) => `<option>${seguro.texto(c.nombre)}</option>`).join('');
-    s.value = filtro;
+    const sel = $('filtroCampana');
+    if (!sel) return;
+    sel.innerHTML = '<option value="Todas">Todas las campañas</option>' +
+      campanas.map((c) => `<option>${seguro.texto(c.nombre)}</option>`).join('');
   }
+
 
   function fijarFiltro(v) { filtro = v; pintar(); }
 
