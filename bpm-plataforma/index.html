@@ -504,6 +504,124 @@
 
       </section>
 
+      <!-- ══════ BLASTER DE VOZ · supervisor y administrador ══════ -->
+      <section class="vista" data-v="blaster">
+        <div class="c">
+          <div class="c-h"><h2>Blasters de voz</h2>
+            <button class="b b-teal b-sm" id="btnBlNuevo">Crear</button></div>
+          <p class="c-sub">Campañas de llamadas automáticas con un mensaje grabado o
+            leído por voz sintética. Solo el administrador puede aprobarlas y lanzarlas.</p>
+          <div id="listaBlasters"><div class="vacio">Cargando…</div></div>
+        </div>
+
+        <!-- ── Editor ── -->
+        <div class="c" id="editorBlaster" style="display:none">
+          <div class="c-h"><h2 id="blTitulo">Nuevo blaster</h2>
+            <span class="t o" id="blEstado">Borrador</span></div>
+
+          <div class="r2">
+            <div class="f"><label>Nombre *</label>
+              <input class="fi" id="blNombre" maxlength="120" placeholder="Ej. Recordatorio de pago"></div>
+            <div class="f"><label>Campaña *</label>
+              <select class="fi" id="blCampana"></select></div>
+          </div>
+
+          <div class="f"><label>Tipo de mensaje *</label>
+            <div class="tabs" id="blTipo">
+              <button class="tab on" data-t="texto">Texto a voz</button>
+              <button class="tab" data-t="variables">Texto con variables</button>
+              <button class="tab" data-t="audio">Audio grabado</button>
+            </div>
+            <div class="hint" id="blTipoAyuda">El mismo mensaje para todos, leído por voz sintética.</div>
+          </div>
+
+          <div class="f" id="blGuionBox">
+            <label>Mensaje *</label>
+            <textarea class="fi" id="blGuion" rows="4"
+              placeholder="Lo que escuchará el cliente al contestar."></textarea>
+            <div class="hint" id="blVariables"></div>
+          </div>
+
+          <div class="f" id="blAudioBox" style="display:none">
+            <label>Archivo de audio *</label>
+            <input class="fi mono" id="blAudio" placeholder="promocion-octubre.mp3">
+            <div class="hint">Debe estar en la carpeta de audios del servidor.</div>
+          </div>
+
+          <div class="f" id="blVozBox">
+            <label>Voz</label>
+            <input class="fi mono" id="blVoz" placeholder="Identificador de la voz en el proveedor">
+          </div>
+
+          <!-- ── Respuesta del cliente ── -->
+          <div class="f">
+            <label class="chk"><input type="checkbox" id="blPideRespuesta">
+              Pedirle una respuesta al cliente</label>
+          </div>
+
+          <div id="blRespuestaBox" style="display:none">
+            <div class="f"><label>Qué se le pide</label>
+              <div class="tabs" id="blRespTipo">
+                <button class="tab on" data-t="tecla">Marcar una tecla</button>
+                <button class="tab" data-t="numero">Digitar un número</button>
+              </div>
+            </div>
+            <div class="f"><label>Lo que se le dice</label>
+              <input class="fi" id="blRespGuion" maxlength="500"
+                placeholder="Si está de acuerdo, marque 1."></div>
+            <div class="r2">
+              <div class="f" id="blTeclasBox"><label>Teclas válidas</label>
+                <input class="fi mono" id="blTeclas" placeholder="1,2"></div>
+              <div class="f" id="blDigitosBox" style="display:none"><label>Cuántos dígitos</label>
+                <input class="fi mono" id="blDigitos" type="number" min="1" max="20" value="10"></div>
+            </div>
+          </div>
+
+          <!-- ── Cuándo llamar ── -->
+          <div class="r2">
+            <div class="f"><label>Desde</label><input class="fi" id="blDesde" type="time" value="08:00"></div>
+            <div class="f"><label>Hasta</label><input class="fi" id="blHasta" type="time" value="19:00"></div>
+          </div>
+          <div class="r2">
+            <div class="f"><label>Días</label><input class="fi mono" id="blDias" value="L,M,X,J,V"></div>
+            <div class="f"><label>Reintentos</label>
+              <input class="fi mono" id="blReintentos" type="number" min="0" max="5" value="2"></div>
+          </div>
+
+          <div class="ctrls">
+            <button class="b b-teal" id="btnBlGuardar">Guardar</button>
+            <button class="b b-gh" id="btnBlCancelar">Cerrar</button>
+            <button class="b b-red b-sm" id="btnBlBorrar" style="display:none">Eliminar</button>
+          </div>
+        </div>
+
+        <!-- ── Destinatarios ── -->
+        <div class="c" id="destinosBlaster" style="display:none">
+          <div class="c-h"><h2>A quiénes se llama</h2>
+            <span class="t o" id="blDestN">0</span></div>
+          <p class="c-sub">Sube el archivo con los números. Se revisa antes de cargar nada.</p>
+          <div class="ctrls" style="margin-bottom:10px">
+            <label class="b b-gh" style="cursor:pointer">Elegir archivo
+              <input type="file" id="blArchivo" accept=".csv,.txt" style="display:none"></label>
+            <button class="b b-teal" id="btnBlCargar" style="display:none">Cargar la lista</button>
+            <button class="b b-gh" id="btnBlPlantilla">Descargar plantilla</button>
+          </div>
+          <div id="blRevision"><div class="vacio">Aún no has subido ningún archivo.</div></div>
+        </div>
+
+        <!-- ── Aprobación y respuestas ── -->
+        <div class="c" id="aprobarBlaster" style="display:none">
+          <div class="c-h"><h2>Lanzamiento</h2></div>
+          <div id="blAprobacion"></div>
+        </div>
+
+        <div class="c" id="respuestasBlaster" style="display:none">
+          <div class="c-h"><h2>Respuestas de los clientes</h2>
+            <span class="t g" id="blRespN">0</span></div>
+          <div id="blRespuestas"></div>
+        </div>
+      </section>
+
       <!-- ══════ GRABACIONES · supervisor ══════ -->
       <section class="vista" data-v="grabaciones">
         <div class="c">
@@ -822,6 +940,7 @@
 <script src="js/telefonia.js"></script>
 <script src="js/supervision.js"></script>
 <script src="js/gestion.js"></script>
+<script src="js/blaster.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>

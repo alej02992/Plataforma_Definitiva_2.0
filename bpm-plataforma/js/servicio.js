@@ -381,6 +381,30 @@ const servicio = (() => {
     } catch (e) { return { ok: false, error: e.message }; }
   }
 
+  /* ── Blaster de voz ── */
+
+  const listarBlasters = () => api('GET', '/blasters');
+  const leerBlaster = (id) => api('GET', '/blasters/' + id);
+  const crearBlaster = (datos) => api('POST', '/blasters', datos);
+  const guardarBlaster = (id, datos) => api('PUT', '/blasters/' + id, datos);
+  const eliminarBlaster = (id) => api('DELETE', '/blasters/' + id);
+
+  /** Revisa la lista sin cargar nada: devuelve qué filas están mal y
+      cómo quedará el mensaje de las primeras. */
+  const revisarDestinos = (id, filas) =>
+    api('POST', `/blasters/${id}/destinos`, { filas, revisar: true });
+
+  const cargarDestinos = (id, filas) =>
+    api('POST', `/blasters/${id}/destinos`, { filas, revisar: false });
+
+  const listarDestinos = (id) => api('GET', `/blasters/${id}/destinos`);
+
+  /** Aprobar, pausar o cancelar. Solo el administrador. */
+  const cambiarEstadoBlaster = (id, estado) =>
+    api('PUT', `/blasters/${id}/estado`, { estado });
+
+  const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
+
   /** Agentes que llevan más tiempo del permitido en su estado. */
   const pausasExcedidas = () => api('GET', '/pausas/excedidas');
 
@@ -646,12 +670,13 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
+    revisarDestinos, cargarDestinos, listarDestinos, cambiarEstadoBlaster, respuestasBlaster,
     pausasExcedidas,
     campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva,
     registrarLlamadaServidor, reporteLlamadas,

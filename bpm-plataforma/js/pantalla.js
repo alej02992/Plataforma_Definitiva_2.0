@@ -91,7 +91,7 @@ const MENU = [
   /* ── AGENTE ──
      Un solo escritorio. Contactos, formularios e historial viven
      dentro de él, para que el agente no navegue fuera de su espacio. */
-  { v:'escritorio', et:'Telefonía', permiso:'softphone',
+  { v:'escritorio', et:'Llamadas', permiso:'softphone',
     icono:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>' },
 
   /* ── SUPERVISOR ── */
@@ -104,6 +104,8 @@ const MENU = [
     icono:'<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/>' },
   { v:'escucha', et:'Escucha en línea', permiso:'escucha',
     icono:'<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>' },
+  { v:'blaster', et:'Blaster de voz', permiso:'blaster',
+    icono:'<path d="M3 11v2a1 1 0 0 0 1 1h3l4 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/>' },
   { v:'reportes', et:'Reportería', permiso:'reportes',
     icono:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 17v-3M12 17v-6M16 17v-4"/>' },
 
@@ -166,6 +168,7 @@ function irA(vista) {
   if (vista === 'disenador' && typeof formularios !== 'undefined') formularios.abrirDisenador();
 
   if (typeof administracion !== 'undefined') {
+    if (vista === 'blaster' && typeof blaster !== 'undefined') blaster.abrir();
     if (vista === 'campanas') {
       administracion.abrirCampanas();
       if (typeof gestionEstados !== 'undefined') gestionEstados.abrir();
