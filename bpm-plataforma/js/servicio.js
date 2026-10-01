@@ -405,6 +405,29 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /* ── Envío de SMS ── */
+
+  const listarSms = () => api('GET', '/sms');
+  const leerSms = (id) => api('GET', '/sms/' + id);
+  const crearSms = (datos) => api('POST', '/sms', datos);
+  const guardarSms = (id, datos) => api('PUT', '/sms/' + id, datos);
+  const eliminarSms = (id) => api('DELETE', '/sms/' + id);
+
+  /** Revisa la lista sin cargar nada: qué filas están mal, cómo quedará
+      el mensaje de las primeras y cuántos SMS cuesta cada uno. */
+  const revisarDestinosSms = (id, filas) =>
+    api('POST', `/sms/${id}/destinos`, { filas, revisar: true });
+
+  const cargarDestinosSms = (id, filas) =>
+    api('POST', `/sms/${id}/destinos`, { filas, revisar: false });
+
+  const listarDestinosSms = (id) => api('GET', `/sms/${id}/destinos`);
+
+  const cambiarEstadoSms = (id, estado) => api('PUT', `/sms/${id}/estado`, { estado });
+
+  /** Dispara el envío. Solo el administrador. */
+  const enviarSms = (id) => api('POST', `/sms/${id}/enviar`);
+
   /** Agentes que llevan más tiempo del permitido en su estado. */
   const pausasExcedidas = () => api('GET', '/pausas/excedidas');
 
@@ -675,6 +698,8 @@ const servicio = (() => {
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    listarSms, leerSms, crearSms, guardarSms, eliminarSms,
+    revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
     revisarDestinos, cargarDestinos, listarDestinos, cambiarEstadoBlaster, respuestasBlaster,
     pausasExcedidas,

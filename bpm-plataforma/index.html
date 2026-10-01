@@ -622,6 +622,76 @@
         </div>
       </section>
 
+      <!-- ══════ ENVÍO DE SMS · supervisor y administrador ══════ -->
+      <section class="vista" data-v="sms">
+        <div class="c">
+          <div class="c-h"><h2>Envíos de SMS</h2>
+            <button class="b b-teal b-sm" id="btnSmNuevo">Crear</button></div>
+          <p class="c-sub">Mensajes de texto a una lista de clientes. Solo el administrador
+            puede aprobarlos y enviarlos.</p>
+          <div id="listaSms"><div class="vacio">Cargando…</div></div>
+        </div>
+
+        <div class="c" id="editorSms" style="display:none">
+          <div class="c-h"><h2 id="smTitulo">Nuevo envío</h2>
+            <span class="t o" id="smEstado">Borrador</span></div>
+
+          <div class="r2">
+            <div class="f"><label>Nombre *</label>
+              <input class="fi" id="smNombre" maxlength="120" placeholder="Ej. Aviso de corte"></div>
+            <div class="f"><label>Campaña *</label>
+              <select class="fi" id="smCampana"></select></div>
+          </div>
+
+          <div class="f"><label>Mensaje *</label>
+            <textarea class="fi" id="smTexto" rows="4" maxlength="900"
+              placeholder="Lo que recibirá el cliente. Puedes usar variables entre llaves: {nombre}."></textarea>
+            <div class="hint" id="smInfo"></div>
+          </div>
+
+          <div class="r2">
+            <div class="f"><label>Remitente</label>
+              <input class="fi mono" id="smRemitente" maxlength="11" placeholder="Opcional">
+              <div class="hint">Si lo dejas vacío se usa el de la cuenta.</div></div>
+            <div class="f"><label>Centro de costo</label>
+              <input class="fi mono" id="smCentro" type="number" min="0" placeholder="Opcional"></div>
+          </div>
+
+          <div class="f">
+            <label class="chk"><input type="checkbox" id="smProgramado">
+              Programar el envío para después</label>
+          </div>
+          <div class="f" id="smFechaBox" style="display:none">
+            <label>Fecha y hora</label>
+            <input class="fi" id="smFecha" type="datetime-local">
+          </div>
+
+          <div class="ctrls">
+            <button class="b b-teal" id="btnSmGuardar">Guardar</button>
+            <button class="b b-gh" id="btnSmCancelar">Cerrar</button>
+            <button class="b b-red b-sm" id="btnSmBorrar" style="display:none">Eliminar</button>
+          </div>
+        </div>
+
+        <div class="c" id="destinosSms" style="display:none">
+          <div class="c-h"><h2>A quiénes se envía</h2>
+            <span class="t o" id="smDestN">0</span></div>
+          <p class="c-sub">Sube el archivo con los celulares. Se revisa antes de cargar nada.</p>
+          <div class="ctrls" style="margin-bottom:10px">
+            <label class="b b-gh" style="cursor:pointer">Elegir archivo
+              <input type="file" id="smArchivo" accept=".csv,.txt" style="display:none"></label>
+            <button class="b b-teal" id="btnSmCargar" style="display:none">Cargar la lista</button>
+            <button class="b b-gh" id="btnSmPlantilla">Descargar plantilla</button>
+          </div>
+          <div id="smRevision"><div class="vacio">Aún no has subido ningún archivo.</div></div>
+        </div>
+
+        <div class="c" id="envioSms" style="display:none">
+          <div class="c-h"><h2>Envío</h2></div>
+          <div id="smEnvio"></div>
+        </div>
+      </section>
+
       <!-- ══════ GRABACIONES · supervisor ══════ -->
       <section class="vista" data-v="grabaciones">
         <div class="c">
@@ -941,6 +1011,7 @@
 <script src="js/supervision.js"></script>
 <script src="js/gestion.js"></script>
 <script src="js/blaster.js"></script>
+<script src="js/sms.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>
