@@ -405,6 +405,34 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /* ── Archivos ── */
+
+  /** Convierte un archivo en filas. Lo hace el servidor porque el
+      navegador no sabe abrir un .xlsx por su cuenta. Sirve igual para
+      Excel y para CSV. */
+  async function leerTabla(archivo) {
+    const contenido = await aBase64(archivo);
+    return api('POST', '/archivos/tabla', { contenido, nombre: archivo.name });
+  }
+
+  /** Sube un audio grabado para el blaster. */
+  async function subirAudio(archivo) {
+    const contenido = await aBase64(archivo);
+    return api('POST', '/archivos/audio', { contenido, nombre: archivo.name });
+  }
+
+  const listarAudios = () => api('GET', '/archivos/audios');
+
+  /** Pasa un archivo a texto para poder mandarlo dentro del JSON. */
+  function aBase64(archivo) {
+    return new Promise((listo, falla) => {
+      const lector = new FileReader();
+      lector.onload = () => listo(String(lector.result).split(',')[1] || '');
+      lector.onerror = () => falla(new Error('No se pudo leer el archivo'));
+      lector.readAsDataURL(archivo);
+    });
+  }
+
   /* ── Envío de SMS ── */
 
   const listarSms = () => api('GET', '/sms');
@@ -693,11 +721,13 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    leerTabla, subirAudio, listarAudios,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,

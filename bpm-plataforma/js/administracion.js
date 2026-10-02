@@ -769,58 +769,26 @@ const administracion = (() => {
   const COLUMNAS = ['usuario', 'nombre', 'correo', 'extension', 'campana', 'rol'];
   let filasMasivas = [];
 
-  /** Lee el texto del archivo. Acepta coma o punto y coma como
-      separador —Excel en español usa punto y coma— y comillas. */
-  function leerCsv(texto) {
-    const limpio = texto.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
-    if (!limpio) return { error: 'El archivo está vacío' };
-
-    const lineas = limpio.split('\n').filter((l) => l.trim());
-    const sep = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ';' : ',';
-
-    const partir = (linea) => {
-      const celdas = []; let actual = ''; let entreComillas = false;
-      for (let i = 0; i < linea.length; i++) {
-        const c = linea[i];
-        if (c === '"') {
-          if (entreComillas && linea[i + 1] === '"') { actual += '"'; i++; }
-          else entreComillas = !entreComillas;
-        } else if (c === sep && !entreComillas) { celdas.push(actual); actual = ''; }
-        else actual += c;
-      }
-      celdas.push(actual);
-      return celdas.map((x) => x.trim());
-    };
-
-    const cabecera = partir(lineas[0]).map((h) =>
-      h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-
-    const faltan = ['usuario', 'nombre'].filter((c) => !cabecera.includes(c));
-    if (faltan.length) {
-      return { error: `Al archivo le faltan columnas obligatorias: ${faltan.join(', ')}. ` +
-                      'Descarga la plantilla para ver el formato.' };
-    }
-
-    const filas = lineas.slice(1).map((l) => {
-      const celdas = partir(l);
-      const fila = {};
-      COLUMNAS.forEach((col) => {
-        const i = cabecera.indexOf(col);
-        fila[col] = i >= 0 ? (celdas[i] || '') : '';
-      });
-      return fila;
-    }).filter((f) => f.usuario || f.nombre);
-
-    return filas.length ? { filas } : { error: 'El archivo no tiene filas con datos' };
-  }
+  /* El archivo lo interpreta el servidor: así se aceptan Excel y CSV
+     por el mismo camino. */
 
   $$('masArchivo')?.addEventListener('change', async (e) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
     e.target.value = '';                    // permite volver a subir el mismo
 
-    const texto = await archivo.text();
-    const { filas, error } = leerCsv(texto);
+    $$('masResultado').innerHTML = '<div class="vacio">Leyendo el archivo…</div>';
+
+    /* El servidor interpreta el archivo: así se aceptan Excel y CSV. */
+    let filas, error;
+    try {
+      ({ filas } = await servicio.leerTabla(archivo));
+      if (!filas.some((f) => f.usuario || f.nombre)) {
+        error = 'Al archivo le faltan las columnas "usuario" y "nombre". Descarga la plantilla.';
+      }
+    } catch (e) {
+      error = e.message;
+    }
 
     if (error) {
       filasMasivas = [];
@@ -913,7 +881,10 @@ const administracion = (() => {
   /* La plantilla evita la mitad de los errores: el administrador parte
      del formato correcto en lugar de adivinarlo. */
   $$('masPlantilla')?.addEventListener('click', () => {
+    /* La primera línea le dice a Excel cómo separar. Sin ella, según
+       la configuración del equipo, todo aparece en una sola columna. */
     const ejemplo = [
+      'sep=;',
       COLUMNAS.join(';'),
       'jperez;Juan Pérez;jperez@bpmconsulting.com.co;1101;Ventas;agente',
       'mlopez;María López;mlopez@bpmconsulting.com.co;1102;Ventas;agente',

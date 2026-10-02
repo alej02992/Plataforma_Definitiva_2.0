@@ -29,6 +29,17 @@ const blaster = (() => {
   let respTipo = 'tecla';
   let filasArchivo = [];
 
+  /* Los días se guardan como "L,M,X,J,V" para que la central los lea
+     igual que siempre; en pantalla son casillas. */
+  const diasMarcados = () =>
+    [...$b('blDias').querySelectorAll('input:checked')].map((i) => i.value).join(',');
+
+  function marcarDias(texto) {
+    const puestos = String(texto || '').split(',').map((d) => d.trim());
+    $b('blDias').querySelectorAll('input')
+      .forEach((i) => { i.checked = puestos.includes(i.value); });
+  }
+
   const AYUDA_TIPO = {
     texto: 'El mismo mensaje para todos, leído por voz sintética.',
     variables: 'Personalizado con los datos de cada contacto. Escribe las variables entre llaves: {nombre}, {valor}.',
@@ -51,6 +62,44 @@ const blaster = (() => {
     await llenarCampanas();
     await pintarLista();
   }
+
+  /** Los audios ya subidos, para elegir uno sin volver a subirlo. */
+  async function llenarAudios(seleccionado) {
+    let r = { audios: [] };
+    try { r = await servicio.listarAudios(); } catch { /* ninguno */ }
+
+    const tam = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB'
+                      : Math.round(b / 1024) + ' KB');
+
+    $b('blAudio').innerHTML = '<option value="">Elige un audio…</option>' +
+      r.audios.map((a) => `<option value="${seguro.texto(a.archivo)}"${
+        a.archivo === seleccionado ? ' selected' : ''}>${seguro.texto(a.archivo)} · ${tam(a.bytes)}</option>`).join('');
+
+    if (seleccionado && !r.audios.some((a) => a.archivo === seleccionado)) {
+      /* El audio guardado ya no está en el servidor: se avisa en lugar
+         de dejar el campo vacío sin explicación. */
+      $b('blAudio').innerHTML +=
+        `<option value="${seguro.texto(seleccionado)}" selected>${seguro.texto(seleccionado)} · no se encuentra</option>`;
+    }
+  }
+
+  $b('blSubirAudio').addEventListener('change', async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    e.target.value = '';
+
+    $b('blSubiendo').textContent = `Subiendo ${archivo.name}…`;
+    try {
+      const r = await servicio.subirAudio(archivo);
+      await llenarAudios(r.archivo);
+      $b('blSubiendo').textContent = '';
+      aviso(r.nota ? `Audio subido. ${r.nota}` : 'Audio subido y listo para usar.',
+            r.nota ? 'av-a' : 'av-b');
+    } catch (err) {
+      $b('blSubiendo').textContent = '';
+      aviso('No se pudo subir: ' + err.message, 'av-a');
+    }
+  });
 
   async function llenarCampanas() {
     let r = { campanas: [] };
@@ -117,8 +166,9 @@ const blaster = (() => {
     $b('blDigitos').value = '10';
     $b('blDesde').value = '08:00';
     $b('blHasta').value = '19:00';
-    $b('blDias').value = 'L,M,X,J,V';
+    marcarDias('L,M,X,J,V');
     $b('blReintentos').value = '2';
+    llenarAudios();
     elegirTipo('texto');
     elegirRespTipo('tecla');
     alternarRespuesta();
@@ -151,7 +201,7 @@ const blaster = (() => {
     $b('blNombre').value = actual.nombre || '';
     $b('blCampana').value = actual.campana_id || '';
     $b('blGuion').value = actual.guion || '';
-    $b('blAudio').value = actual.audio_archivo || '';
+    await llenarAudios(actual.audio_archivo || '');
     $b('blVoz').value = actual.voz_id || '';
     $b('blPideRespuesta').checked = !!actual.respuesta;
     $b('blRespGuion').value = actual.respuesta_guion || '';
@@ -159,7 +209,7 @@ const blaster = (() => {
     $b('blDigitos').value = actual.respuesta_digitos || 10;
     $b('blDesde').value = (actual.hora_inicio || '08:00').slice(0, 5);
     $b('blHasta').value = (actual.hora_fin || '19:00').slice(0, 5);
-    $b('blDias').value = actual.dias || 'L,M,X,J,V';
+    marcarDias(actual.dias || 'L,M,X,J,V');
     $b('blReintentos').value = actual.reintentos ?? 2;
 
     elegirTipo(actual.tipo);
@@ -252,7 +302,7 @@ const blaster = (() => {
     respuesta_digitos: Number($b('blDigitos').value) || 10,
     hora_inicio: $b('blDesde').value + ':00',
     hora_fin: $b('blHasta').value + ':00',
-    dias: $b('blDias').value.trim(),
+    dias: diasMarcados(),
     reintentos: Number($b('blReintentos').value) || 0,
   });
 
@@ -304,55 +354,30 @@ const blaster = (() => {
 
   const COLUMNAS = ['numero', 'nombre'];
 
-  function leerCsv(texto) {
-    const limpio = texto.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
-    if (!limpio) return { error: 'El archivo está vacío' };
-
-    const lineas = limpio.split('\n').filter((l) => l.trim());
-    const sep = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ';' : ',';
-
-    const partir = (linea) => {
-      const celdas = []; let actualTxt = ''; let comillas = false;
-      for (let i = 0; i < linea.length; i++) {
-        const c = linea[i];
-        if (c === '"') {
-          if (comillas && linea[i + 1] === '"') { actualTxt += '"'; i++; }
-          else comillas = !comillas;
-        } else if (c === sep && !comillas) { celdas.push(actualTxt); actualTxt = ''; }
-        else actualTxt += c;
-      }
-      celdas.push(actualTxt);
-      return celdas.map((x) => x.trim());
-    };
-
-    const cabecera = partir(lineas[0]).map((h) =>
-      h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-
-    if (!cabecera.includes('numero') && !cabecera.includes('telefono')) {
-      return { error: 'Al archivo le falta la columna "numero". Descarga la plantilla.' };
-    }
-
-    /* Toda columna que no sea el número es una variable del mensaje */
-    const filas = lineas.slice(1).map((l) => {
-      const celdas = partir(l);
-      const fila = {};
-      cabecera.forEach((col, i) => { fila[col] = celdas[i] || ''; });
-      return fila;
-    }).filter((f) => f.numero || f.telefono);
-
-    return filas.length ? { filas } : { error: 'El archivo no tiene filas con datos' };
-  }
+  /* El archivo lo interpreta el servidor: Excel y CSV por el mismo
+     camino. */
 
   $b('blArchivo').addEventListener('change', async (e) => {
     const archivo = e.target.files?.[0];
     if (!archivo || !actual) return;
     e.target.value = '';
 
-    const { filas, error } = leerCsv(await archivo.text());
-    if (error) {
+    $b('blRevision').innerHTML = '<div class="vacio">Leyendo el archivo…</div>';
+
+    let filas;
+    try {
+      ({ filas } = await servicio.leerTabla(archivo));
+    } catch (err) {
       filasArchivo = [];
       $b('btnBlCargar').style.display = 'none';
-      $b('blRevision').innerHTML = avisoCaja('av-r', error);
+      $b('blRevision').innerHTML = avisoCaja('av-r', err.message);
+      return;
+    }
+
+    if (!filas.some((f) => f.numero || f.telefono)) {
+      $b('btnBlCargar').style.display = 'none';
+      $b('blRevision').innerHTML = avisoCaja('av-r',
+        'Al archivo le falta la columna "numero". Descarga la plantilla para ver el formato.');
       return;
     }
 
@@ -448,9 +473,13 @@ const blaster = (() => {
        sale con las columnas que este blaster necesita. */
     const vs = [...new Set([...$b('blGuion').value.matchAll(/\{(\w+)\}/g)].map((m) => m[1]))];
     const cols = [...new Set([...COLUMNAS, ...vs])];
+    /* La primera línea le dice a Excel cómo separar. Sin ella, según
+       la configuración del equipo, todo aparece en una sola columna. */
     const ejemplo = [
+      'sep=;',
       cols.join(';'),
       cols.map((c) => c === 'numero' ? '3102879726' : c === 'nombre' ? 'Juan Pérez' : 'valor').join(';'),
+      cols.map((c) => c === 'numero' ? '3004432187' : c === 'nombre' ? 'María Gómez' : 'valor').join(';'),
     ].join('\r\n');
 
     const a = document.createElement('a');

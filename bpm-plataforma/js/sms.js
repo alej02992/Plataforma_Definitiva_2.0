@@ -241,43 +241,9 @@ const mensajes = (() => {
 
   /* ═══════════ DESTINATARIOS ═══════════ */
 
-  function leerCsv(texto) {
-    const limpio = texto.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
-    if (!limpio) return { error: 'El archivo está vacío' };
-
-    const lineas = limpio.split('\n').filter((l) => l.trim());
-    const sep = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ';' : ',';
-
-    const partir = (linea) => {
-      const celdas = []; let txt = ''; let comillas = false;
-      for (let i = 0; i < linea.length; i++) {
-        const c = linea[i];
-        if (c === '"') {
-          if (comillas && linea[i + 1] === '"') { txt += '"'; i++; }
-          else comillas = !comillas;
-        } else if (c === sep && !comillas) { celdas.push(txt); txt = ''; }
-        else txt += c;
-      }
-      celdas.push(txt);
-      return celdas.map((x) => x.trim());
-    };
-
-    const cabecera = partir(lineas[0]).map((h) =>
-      h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-
-    if (!cabecera.includes('numero') && !cabecera.includes('telefono')) {
-      return { error: 'Al archivo le falta la columna "numero". Descarga la plantilla.' };
-    }
-
-    const filas = lineas.slice(1).map((l) => {
-      const celdas = partir(l);
-      const fila = {};
-      cabecera.forEach((col, i) => { fila[col] = celdas[i] || ''; });
-      return fila;
-    }).filter((f) => f.numero || f.telefono);
-
-    return filas.length ? { filas } : { error: 'El archivo no tiene filas con datos' };
-  }
+  /* El archivo lo interpreta el servidor: así se aceptan Excel y CSV
+     con el mismo camino, y el navegador no tiene que saber abrir un
+     .xlsx, que es un archivo comprimido con formato interno. */
 
   const avisoCaja = (clase, texto) => `<div class="aviso ${clase}" style="margin:0 0 10px">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -288,11 +254,22 @@ const mensajes = (() => {
     if (!archivo || !actual) return;
     e.target.value = '';
 
-    const { filas, error } = leerCsv(await archivo.text());
-    if (error) {
+    $s('smRevision').innerHTML = '<div class="vacio">Leyendo el archivo…</div>';
+
+    let filas;
+    try {
+      ({ filas } = await servicio.leerTabla(archivo));
+    } catch (err) {
       filasArchivo = [];
       $s('btnSmCargar').style.display = 'none';
-      $s('smRevision').innerHTML = avisoCaja('av-r', error);
+      $s('smRevision').innerHTML = avisoCaja('av-r', err.message);
+      return;
+    }
+
+    if (!filas.some((f) => f.numero || f.telefono)) {
+      $s('btnSmCargar').style.display = 'none';
+      $s('smRevision').innerHTML = avisoCaja('av-r',
+        'Al archivo le falta la columna "numero". Descarga la plantilla para ver el formato.');
       return;
     }
 
@@ -392,9 +369,13 @@ const mensajes = (() => {
   $s('btnSmPlantilla').addEventListener('click', () => {
     const vs = [...new Set([...$s('smTexto').value.matchAll(/\{(\w+)\}/g)].map((m) => m[1]))];
     const cols = [...new Set(['numero', 'nombre', ...vs])];
+    /* La primera línea le dice a Excel cómo separar. Sin ella, según
+       la configuración del equipo, todo aparece en una sola columna. */
     const ejemplo = [
+      'sep=;',
       cols.join(';'),
       cols.map((c) => c === 'numero' ? '3102879726' : c === 'nombre' ? 'Juan Pérez' : 'valor').join(';'),
+      cols.map((c) => c === 'numero' ? '3004432187' : c === 'nombre' ? 'María Gómez' : 'valor').join(';'),
     ].join('\r\n');
 
     const a = document.createElement('a');

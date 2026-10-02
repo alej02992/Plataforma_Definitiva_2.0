@@ -543,9 +543,14 @@
           </div>
 
           <div class="f" id="blAudioBox" style="display:none">
-            <label>Archivo de audio *</label>
-            <input class="fi mono" id="blAudio" placeholder="promocion-octubre.mp3">
-            <div class="hint">Debe estar en la carpeta de audios del servidor.</div>
+            <label>Audio del mensaje *</label>
+            <div class="ctrls" style="margin-bottom:8px">
+              <label class="b b-gh" style="cursor:pointer">Subir desde mi equipo
+                <input type="file" id="blSubirAudio" accept=".mp3,.wav,.ogg" style="display:none"></label>
+              <span class="hint" id="blSubiendo"></span>
+            </div>
+            <select class="fi" id="blAudio"><option value="">Elige un audio…</option></select>
+            <div class="hint">MP3, WAV u OGG, hasta 10 MB. Se convierte solo al formato de la central.</div>
           </div>
 
           <div class="f" id="blVozBox">
@@ -583,7 +588,16 @@
             <div class="f"><label>Hasta</label><input class="fi" id="blHasta" type="time" value="19:00"></div>
           </div>
           <div class="r2">
-            <div class="f"><label>Días</label><input class="fi mono" id="blDias" value="L,M,X,J,V"></div>
+            <div class="f"><label>Días que puede llamar</label>
+              <div class="dias" id="blDias">
+                <label><input type="checkbox" value="L" checked> Lun</label>
+                <label><input type="checkbox" value="M" checked> Mar</label>
+                <label><input type="checkbox" value="X" checked> Mié</label>
+                <label><input type="checkbox" value="J" checked> Jue</label>
+                <label><input type="checkbox" value="V" checked> Vie</label>
+                <label><input type="checkbox" value="S"> Sáb</label>
+                <label><input type="checkbox" value="D"> Dom</label>
+              </div></div>
             <div class="f"><label>Reintentos</label>
               <input class="fi mono" id="blReintentos" type="number" min="0" max="5" value="2"></div>
           </div>
@@ -602,7 +616,7 @@
           <p class="c-sub">Sube el archivo con los números. Se revisa antes de cargar nada.</p>
           <div class="ctrls" style="margin-bottom:10px">
             <label class="b b-gh" style="cursor:pointer">Elegir archivo
-              <input type="file" id="blArchivo" accept=".csv,.txt" style="display:none"></label>
+              <input type="file" id="blArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none"></label>
             <button class="b b-teal" id="btnBlCargar" style="display:none">Cargar la lista</button>
             <button class="b b-gh" id="btnBlPlantilla">Descargar plantilla</button>
           </div>
@@ -679,7 +693,7 @@
           <p class="c-sub">Sube el archivo con los celulares. Se revisa antes de cargar nada.</p>
           <div class="ctrls" style="margin-bottom:10px">
             <label class="b b-gh" style="cursor:pointer">Elegir archivo
-              <input type="file" id="smArchivo" accept=".csv,.txt" style="display:none"></label>
+              <input type="file" id="smArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none"></label>
             <button class="b b-teal" id="btnSmCargar" style="display:none">Cargar la lista</button>
             <button class="b b-gh" id="btnSmPlantilla">Descargar plantilla</button>
           </div>
@@ -878,7 +892,7 @@
           <div class="ctrls" style="margin-bottom:10px">
             <label class="b b-gh" style="cursor:pointer">
               Elegir archivo
-              <input type="file" id="masArchivo" accept=".csv,.txt" style="display:none">
+              <input type="file" id="masArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none">
             </label>
             <button class="b b-teal" id="masCrear" style="display:none">Crear los usuarios</button>
             <button class="b b-gh" id="masPlantilla">Descargar plantilla</button>
