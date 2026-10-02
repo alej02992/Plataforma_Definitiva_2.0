@@ -1,4 +1,3 @@
-
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -106,6 +105,8 @@ const MENU = [
     icono:'<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>' },
   { v:'blaster', et:'Blaster de voz', permiso:'blaster',
     icono:'<path d="M3 11v2a1 1 0 0 0 1 1h3l4 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/>' },
+  { v:'marcacion', et:'Marcación', permiso:'marcacion',
+    icono:'<path d="M3 5a2 2 0 0 1 2-2h3l2 5-2.5 1.5a11 11 0 0 0 5 5L14 12l5 2v3a2 2 0 0 1-2 2A14 14 0 0 1 3 5z"/><path d="M15 3h6M18 0v6"/>' },
   { v:'sms', et:'Envío de SMS', permiso:'sms',
     icono:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>' },
   { v:'reportes', et:'Reportería', permiso:'reportes',
@@ -172,6 +173,7 @@ function irA(vista) {
   if (typeof administracion !== 'undefined') {
     if (vista === 'blaster' && typeof blaster !== 'undefined') blaster.abrir();
     if (vista === 'sms' && typeof mensajes !== 'undefined') mensajes.abrir();
+    if (vista === 'marcacion' && typeof marcacion !== 'undefined') marcacion.abrir();
     if (vista === 'campanas') {
       administracion.abrirCampanas();
       if (typeof gestionEstados !== 'undefined') gestionEstados.abrir();
@@ -695,6 +697,9 @@ function entrarEnPausa(motivo, boton) {
 
   /* Si el servidor rechaza el estado —por ejemplo, si el supervisor lo
      desactivó hace un momento— se deshace el cambio. */
+  /* En pausa no se gestionan contactos: el que tuviera vuelve a la cola */
+  if (typeof marcacion !== 'undefined') marcacion.soltar();
+
   servicio.registrarPausa(motivo, true).then((r) => {
     if (r && r.ok === false) {
       aviso(r.error || 'No se pudo registrar la pausa.', 'av-a');
@@ -719,6 +724,8 @@ $('pausas').addEventListener('click', (e) => {
 
 $('btnDisponible').addEventListener('click', () => {
   clearInterval(relojPausa); relojPausa = null;
+  /* Al volver de pausa se vuelve a pedir contacto */
+  if (typeof marcacion !== 'undefined') setTimeout(() => marcacion.pedirSiguiente(), 400);
   $('estAg').classList.remove('vencido');
   ui.pausa = null; telefonia.pausa = null;
   document.querySelectorAll('.pz').forEach((x) => x.classList.remove('on'));
@@ -1266,6 +1273,7 @@ async function montarAplicacion(sesion, simulado) {
     pintarHistorial();
     formularios.pintarPendientes();
     formularios.abrirAgente();      // carga el formulario de su campaña
+    if (typeof marcacion !== 'undefined') marcacion.pedirSiguiente();
     firmaEstados = '';
     cargarEstados();               // y los estados de pausa de su campaña
 

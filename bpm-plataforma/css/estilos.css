@@ -605,3 +605,10 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
   cursor:pointer;transition:.12s}
 .dias label:hover{border-color:#9FE4FA;background:var(--secondary-l)}
 .dias input{accent-color:var(--secondary);margin:0}
+
+/* ══════════ FICHA DEL CONTACTO EN MARCACIÓN ══════════ */
+.ficha-marcador{background:var(--soft);border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;margin-bottom:10px}
+.fm-nombre{font-size:15px;font-weight:700;color:var(--ink)}
+.fm-tel{font-size:17px;font-weight:700;color:var(--secondary-d);margin-top:2px}
+.fm-doc{font-size:11.5px;color:var(--ink-3);margin-top:2px}

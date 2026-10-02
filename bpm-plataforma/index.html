@@ -287,6 +287,14 @@
             </div>
 
 
+            <!-- Contacto que le tocó al agente desde la base de marcación.
+                 Solo aparece cuando hay una base activa en su campaña. -->
+            <div class="c" id="tarjetaMarcador" style="display:none">
+              <div class="c-h"><h2>Siguiente contacto</h2>
+                <span class="t o" id="maEstado">—</span></div>
+              <div id="maCuerpo"></div>
+            </div>
+
             <div class="c" id="tarjetaForm">
               <div class="c-h">
                 <h2 id="formTitulo">Formulario de la gestión</h2>
@@ -633,6 +641,97 @@
           <div class="c-h"><h2>Respuestas de los clientes</h2>
             <span class="t g" id="blRespN">0</span></div>
           <div id="blRespuestas"></div>
+        </div>
+      </section>
+
+      <!-- ══════ MARCACIÓN · supervisor y administrador ══════ -->
+      <section class="vista" data-v="marcacion">
+        <div class="c">
+          <div class="c-h"><h2>Bases de marcación</h2>
+            <button class="b b-teal b-sm" id="btnBaNueva">Crear</button></div>
+          <p class="c-sub">Listas de contactos que los agentes van atendiendo.
+            Mientras la base está activa, cada agente libre recibe el siguiente.</p>
+          <div id="listaBases"><div class="vacio">Cargando…</div></div>
+        </div>
+
+        <div class="c" id="editorBase" style="display:none">
+          <div class="c-h"><h2 id="baTitulo">Nueva base</h2>
+            <span class="t o" id="baEstado">Borrador</span></div>
+
+          <div class="r2">
+            <div class="f"><label>Nombre *</label>
+              <input class="fi" id="baNombre" maxlength="120" placeholder="Ej. Cobranza octubre"></div>
+            <div class="f"><label>Campaña *</label>
+              <select class="fi" id="baCampana"></select></div>
+          </div>
+
+          <div class="r2">
+            <div class="f"><label>Reintentos si no contesta</label>
+              <input class="fi mono" id="baReintentos" type="number" min="0" max="5" value="2">
+              <div class="hint">Cuántas veces más se intenta.</div></div>
+            <div class="f"><label>Esperar entre intentos</label>
+              <input class="fi mono" id="baIntervalo" type="number" min="5" max="1440" value="60">
+              <div class="hint">En minutos.</div></div>
+          </div>
+
+          <div class="r2">
+            <div class="f"><label>Desde</label><input class="fi" id="baDesde" type="time" value="08:00"></div>
+            <div class="f"><label>Hasta</label><input class="fi" id="baHasta" type="time" value="19:00"></div>
+          </div>
+
+          <div class="f"><label>Días que se llama</label>
+            <div class="dias" id="baDias">
+              <label><input type="checkbox" value="L" checked> Lun</label>
+              <label><input type="checkbox" value="M" checked> Mar</label>
+              <label><input type="checkbox" value="X" checked> Mié</label>
+              <label><input type="checkbox" value="J" checked> Jue</label>
+              <label><input type="checkbox" value="V" checked> Vie</label>
+              <label><input type="checkbox" value="S"> Sáb</label>
+              <label><input type="checkbox" value="D"> Dom</label>
+            </div></div>
+
+          <div class="ctrls">
+            <button class="b b-teal" id="btnBaGuardar">Guardar</button>
+            <button class="b b-gh" id="btnBaCerrar">Cerrar</button>
+            <button class="b b-red b-sm" id="btnBaBorrar" style="display:none">Eliminar</button>
+          </div>
+        </div>
+
+        <div class="c" id="contactosBase" style="display:none">
+          <div class="c-h"><h2>Contactos</h2><span class="t o" id="baContN">0</span></div>
+          <p class="c-sub">El archivo debe traer la columna del teléfono. El segundo teléfono
+            es opcional y solo se usa si el primero no contesta.</p>
+          <div class="ctrls" style="margin-bottom:10px">
+            <label class="b b-gh" style="cursor:pointer">Elegir archivo
+              <input type="file" id="baArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none"></label>
+            <button class="b b-teal" id="btnBaCargar" style="display:none">Cargar contactos</button>
+            <button class="b b-gh" id="btnBaPlantilla">Descargar plantilla</button>
+          </div>
+          <div id="baRevision"><div class="vacio">Aún no has subido ningún archivo.</div></div>
+        </div>
+
+        <div class="c" id="seguimientoBase" style="display:none">
+          <div class="c-h"><h2>Seguimiento</h2>
+            <button class="b b-gh b-sm" id="btnBaRefrescar">Actualizar</button></div>
+          <div class="tarjetas" id="baResumen"></div>
+          <div class="ctrls" style="margin:10px 0">
+            <select class="fi" id="baFiltro" style="max-width:230px">
+              <option value="">Todos los contactos</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="asignado">En gestión</option>
+              <option value="gestionado">Gestionados</option>
+              <option value="sin_contacto">Sin contacto</option>
+              <option value="agendado">Agendados</option>
+              <option value="excluido">Excluidos</option>
+            </select>
+            <button class="b b-gh b-sm" id="btnBaCsv">Descargar CSV</button>
+          </div>
+          <div id="baTabla"></div>
+        </div>
+
+        <div class="c" id="lanzarBase" style="display:none">
+          <div class="c-h"><h2>Estado de la base</h2></div>
+          <div id="baLanzar"></div>
         </div>
       </section>
 
@@ -1026,6 +1125,7 @@
 <script src="js/gestion.js"></script>
 <script src="js/blaster.js"></script>
 <script src="js/sms.js"></script>
+<script src="js/marcacion.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>

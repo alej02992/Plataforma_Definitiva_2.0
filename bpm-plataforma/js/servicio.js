@@ -405,6 +405,33 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /* ── Marcación ── */
+
+  const listarBases = () => api('GET', '/bases');
+  const leerBase = (id) => api('GET', '/bases/' + id);
+  const crearBase = (datos) => api('POST', '/bases', datos);
+  const guardarBase = (id, datos) => api('PUT', '/bases/' + id, datos);
+  const eliminarBase = (id) => api('DELETE', '/bases/' + id);
+  const cambiarEstadoBase = (id, estado) => api('PUT', `/bases/${id}/estado`, { estado });
+
+  const revisarContactos = (id, filas) =>
+    api('POST', `/bases/${id}/contactos`, { filas, revisar: true });
+  const cargarContactos = (id, filas) =>
+    api('POST', `/bases/${id}/contactos`, { filas, revisar: false });
+  const seguimientoBase = (id, estado) =>
+    api('GET', `/bases/${id}/contactos` + (estado ? '?estado=' + encodeURIComponent(estado) : ''));
+
+  /** El siguiente contacto para este agente. El servidor lo marca como
+      suyo antes de devolverlo, así que dos agentes nunca reciben el
+      mismo. */
+  const siguienteContacto = () => api('GET', '/marcacion/siguiente');
+
+  const resultadoContacto = (id, datos) =>
+    api('POST', `/marcacion/contactos/${id}/resultado`, datos);
+
+  /** Devuelve a la cola el contacto que tenía asignado. */
+  const soltarContacto = () => api('POST', '/marcacion/soltar');
+
   /* ── Archivos ── */
 
   /** Convierte un archivo en filas. Lo hace el servidor porque el
@@ -728,6 +755,9 @@ const servicio = (() => {
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
+    listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
+    revisarContactos, cargarContactos, seguimientoBase,
+    siguienteContacto, resultadoContacto, soltarContacto,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
