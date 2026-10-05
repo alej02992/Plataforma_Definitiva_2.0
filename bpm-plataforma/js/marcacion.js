@@ -365,11 +365,14 @@ const marcacion = (() => {
 
   $m('btnBaPlantilla').addEventListener('click', () => {
     /* La primera línea le dice a Excel cómo separar las columnas. */
+    /* Solo el teléfono es obligatorio. El segundo teléfono se usa si el
+       primero no contesta; el resto es información para el agente.
+       Cualquier columna que agregues aparecerá también en su pantalla. */
     const ejemplo = [
       'sep=;',
-      'telefono_1;telefono_2;nombre;documento;saldo',
-      '3102879726;3151112233;Juan Pérez;79123456;250.000',
-      '3004432187;;María Gómez;52984112;180.000',
+      'telefono_1;telefono_2;nombre;documento;observaciones',
+      '3102879726;3151112233;Juan Pérez;79123456;Cliente antiguo',
+      '3004432187;;María Gómez;52984112;',
     ].join('\r\n');
 
     const a = document.createElement('a');
