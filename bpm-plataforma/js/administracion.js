@@ -633,13 +633,50 @@ const administracion = (() => {
           <button class="b b-gh b-sm" data-editar="${seguro.texto(u.usuario)}">Editar</button>
           <button class="b b-gh b-sm" data-rest="${seguro.texto(u.id)}" title="Devolver a la contraseña temporal">Restablecer</button>
           ${u.activo === false
-            ? `<button class="b b-green b-sm" data-activar="${seguro.texto(u.id)}">Reactivar</button>`
+            ? `<button class="b b-green b-sm" data-activar="${seguro.texto(u.id)}">Reactivar</button>
+               <button class="b b-red b-sm" data-borrar-usr="${seguro.texto(u.id)}"
+                       title="Quitarlo de la lista para siempre">Eliminar definitivamente</button>`
             : (u.usuario === ui.sesion?.usuario
                 ? ''
                 : `<button class="b b-red b-sm" data-baja="${seguro.texto(u.id)}" title="El usuario deja de entrar; su historial se conserva">Eliminar</button>`)}
         </td>
       </tr>`).join('')}</table>`;
   }
+
+  /* ── Eliminar definitivamente ──
+     Solo aparece en usuarios ya desactivados. Lo que dejaron hecho no
+     se borra: las llamadas y gestiones conservan su nombre. */
+  $$('tablaUsuarios')?.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-borrar-usr]');
+    if (!b) return;
+
+    const nombre = b.closest('tr')?.querySelector('b')?.textContent || 'este usuario';
+
+    if (!confirm(`¿Eliminar definitivamente a ${nombre}?\n\n` +
+                 'Desaparece de la lista y su extensión se borra de la central.\n' +
+                 'Sus llamadas y gestiones se conservan en los reportes, con su nombre.\n\n' +
+                 'Esto no se puede deshacer.')) return;
+
+    b.disabled = true;
+    try {
+      const r = await servicio.eliminarUsuarioDefinitivo(b.dataset.borrarUsr);
+      await recargarUsuarios();
+
+      const c = r.conservado || {};
+      const quedan = [
+        c.llamadas ? `${c.llamadas} llamada(s)` : null,
+        c.gestiones ? `${c.gestiones} gestión(es)` : null,
+        c.formularios ? `${c.formularios} formulario(s)` : null,
+      ].filter(Boolean);
+
+      aviso(quedan.length
+        ? `${nombre} eliminado. Se conservan ${quedan.join(', ')} con su nombre.`
+        : `${nombre} eliminado.`, 'av-b');
+    } catch (err) {
+      aviso(err.message, 'av-a');
+      b.disabled = false;
+    }
+  });
 
   $$('tablaUsuarios')?.addEventListener('click', async (e) => {
     /* Cambio de rol de un solo clic */

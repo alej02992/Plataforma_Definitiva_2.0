@@ -500,6 +500,10 @@ const servicio = (() => {
 
   /* ── Campañas a cargo y alta masiva ── */
 
+  /** Borra un usuario para siempre. Solo funciona si ya está dado de
+      baja; su historial se conserva con el nombre guardado. */
+  const eliminarUsuarioDefinitivo = (id) => api('DELETE', `/usuarios/${id}/definitivo`);
+
   const campanasDeUsuario = (id) => api('GET', '/usuarios/' + id + '/campanas');
 
   async function guardarCampanasDeUsuario(id, campanas) {
@@ -755,7 +759,6 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
@@ -770,7 +773,7 @@ const servicio = (() => {
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
     revisarDestinos, cargarDestinos, listarDestinos, cambiarEstadoBlaster, respuestasBlaster,
     pausasExcedidas,
-    campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva,
+    campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva, eliminarUsuarioDefinitivo,
     registrarLlamadaServidor, reporteLlamadas,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
