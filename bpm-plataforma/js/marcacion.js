@@ -164,7 +164,9 @@ const marcacion = (() => {
   }
 
   const alternarAuto = () => {
-    $m('baSimulBox').style.display = $m('baAuto').checked ? '' : 'none';
+    const auto = $m('baAuto').checked;
+    $m('baSimulBox').style.display = auto ? '' : 'none';
+    $m('baCierreBox').style.display = auto ? '' : 'none';
   };
   $m('baAuto').addEventListener('change', alternarAuto);
 
@@ -182,6 +184,7 @@ const marcacion = (() => {
     marcarDias('L,M,X,J,V');
     $m('baAuto').checked = false;
     $m('baSimultaneas').value = '1';
+    $m('baCierre').value = '30';
     alternarAuto();
     $m('btnBaBorrar').style.display = 'none';
     ['contactosBase', 'seguimientoBase', 'lanzarBase']
@@ -212,6 +215,7 @@ const marcacion = (() => {
     marcarDias(base.dias || 'L,M,X,J,V');
     $m('baAuto').checked = !!base.marcacion_auto;
     $m('baSimultaneas').value = Number(base.simultaneas) || 1;
+    $m('baCierre').value = base.cierre_seg ?? 30;
     alternarAuto();
     $m('btnBaBorrar').style.display = '';
 
@@ -238,6 +242,7 @@ const marcacion = (() => {
       dias: diasMarcados(),
       marcacion_auto: $m('baAuto').checked,
       simultaneas: Number($m('baSimultaneas').value) || 1,
+      cierre_seg: Number($m('baCierre').value) || 0,
     };
     if (!datos.dias) { aviso('Marca al menos un día.', 'av-a'); return; }
 
@@ -559,9 +564,14 @@ const marcacion = (() => {
       </div>
       ${extra ? `<div class="cf-rejilla" style="margin:10px 0">${extra}</div>` : ''}
 
-      <div class="ctrls">
-        <button class="b b-teal b-w" id="maLlamar">Llamar a ${seguro.texto(contacto.telefono)}</button>
-      </div>
+      ${baseAgente?.automatica
+        ? `<div class="aviso av-b" style="margin:0 0 10px">
+             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+             <div>La llamada entra sola: no tienes que marcar. Al colgar tendrás
+             ${seguro.texto(baseAgente.cierre_seg ?? 30)} segundos para escribir el resultado.</div></div>`
+        : `<div class="ctrls">
+             <button class="b b-teal b-w" id="maLlamar">Llamar a ${seguro.texto(contacto.telefono)}</button>
+           </div>`}
 
       <div class="f" style="margin-top:10px">
         <label>Resultado de la gestión</label>
@@ -661,6 +671,13 @@ const marcacion = (() => {
       aviso(e.message, 'av-a');
     }
   }
+
+  /* En marcación automática la plataforma pregunta sola cada pocos
+     segundos si ya le entró otra llamada, igual que el motor pregunta
+     quién está libre. Así el agente no tiene que hacer nada. */
+  setInterval(() => {
+    if (!contacto && baseAgente && baseAgente.automatica) pedirSiguiente();
+  }, 5000);
 
   /** Devuelve el contacto a la cola: el agente se va a pausa o sale. */
   async function soltar() {
