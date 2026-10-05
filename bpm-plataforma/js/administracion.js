@@ -341,28 +341,42 @@ const administracion = (() => {
   }
 
   /* ── Entrar a una llamada ──
-     El servidor comprueba que el agente sea de una campaña suya y deja
-     registro de quién escuchó a quién. */
+
+     El servidor comprueba que el agente sea de una campaña del
+     supervisor, lo deja registrado y devuelve un código interno. La
+     plataforma lo marca por detrás, en silencio: el supervisor pulsa
+     el botón y empieza a oír, sin contestar nada.
+
+     Se marca desde su navegador y no al revés porque, si la central lo
+     llamara a él, tendría que contestar su teléfono para poder oír. */
   $$('tablaEscucha')?.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-oir]');
     if (!b) return;
+
+    if (telefonia.estado !== 'reposo') {
+      aviso('Cuelga tu llamada actual antes de entrar a escuchar.', 'av-a');
+      return;
+    }
 
     const susurro = b.dataset.modo === 'susurrar';
     const texto = susurro
       ? `Vas a hablarle a ${b.dataset.nombre}. El cliente no te escuchará.`
       : `Vas a escuchar la llamada de ${b.dataset.nombre}. Ni el agente ni el cliente lo notarán.`;
 
-    if (!confirm(`${texto}\n\nTu extensión va a sonar: contesta para entrar.`)) return;
+    if (!confirm(`${texto}\n\nQueda registrado en la auditoría.`)) return;
 
     b.disabled = true;
     try {
-      await servicio.escuchar(b.dataset.oir, b.dataset.modo);
+      const r = await servicio.escuchar(b.dataset.oir, b.dataset.modo);
+
+      /* El código no se le muestra: es plomería, no información útil */
+      await telefonia.llamar(r.numero);
 
       escuchando = b.dataset.oir;
       $$('escuchaActiva').style.display = '';
       $$('escDetalle').textContent =
         `${b.dataset.nombre} · extensión ${b.dataset.oir} · ${susurro ? 'susurrando' : 'escuchando'}`;
-      aviso('Contesta tu extensión para entrar a la llamada.', 'av-b');
+      aviso(susurro ? 'Estás hablando con el agente.' : 'Estás escuchando la llamada.', 'av-b');
     } catch (err) {
       aviso(err.message, 'av-a');
     } finally {
@@ -370,13 +384,20 @@ const administracion = (() => {
     }
   });
 
-  /* Para salir basta con colgar: la escucha vive en la llamada del
-     supervisor, no en la plataforma. */
+  /* Salir es colgar: la escucha vive en la llamada del supervisor */
   $$('btnDejarEscucha')?.addEventListener('click', () => {
     if (telefonia.estado !== 'reposo') telefonia.colgar();
     escuchando = null;
     $$('escuchaActiva').style.display = 'none';
     aviso('Escucha finalizada.', 'av-b');
+  });
+
+  /* Si cuelga desde el softphone, la tarjeta no puede quedarse puesta */
+  telefonia.on('fin', () => {
+    if (escuchando) {
+      escuchando = null;
+      if ($$('escuchaActiva')) $$('escuchaActiva').style.display = 'none';
+    }
   });
 
   /* ═══════════════════════════════════════════════════════════════
