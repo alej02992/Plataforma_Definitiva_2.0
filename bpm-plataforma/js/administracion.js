@@ -282,44 +282,98 @@ const administracion = (() => {
      SUPERVISOR · ESCUCHA EN LÍNEA
      ═══════════════════════════════════════════════════════════════ */
 
-  function abrirEscucha() {
-    /* En producción esto sale de los eventos del AMI. Aquí se muestra
-       la llamada del propio agente si está en curso. */
-    const activas = [];
-    if (telefonia.estado === 'activa' || telefonia.estado === 'espera') {
-      activas.push({
-        agente: ui.sesion?.nombre || 'Agente',
-        numero: telefonia.numero,
-        campana: ui.sesion?.campana || '—',
-        desde: telefonia.inicio,
-      });
-    }
+  /* Las llamadas en curso salen del panel en vivo, que a su vez las
+     toma de la central. Se refresca solo mientras la vista está
+     abierta: con llamadas de dos minutos, una foto vieja no sirve. */
 
-    $$('escN').textContent = activas.length;
-    $$('tablaEscucha').innerHTML = !activas.length
-      ? '<div class="vacio">No hay llamadas activas en este momento.</div>'
-      : `<table class="tb">
-        <tr><th>Agente</th><th>Número</th><th>Campaña</th><th>Duración</th><th></th></tr>
-        ${activas.map((a, i) => `<tr>
-          <td><b>${seguro.texto(a.agente)}</b></td>
-          <td class="mono">${seguro.texto(a.numero)}</td>
-          <td>${seguro.texto(a.campana)}</td>
-          <td class="mono">${duracion(Math.round((Date.now() - a.desde) / 1000))}</td>
-          <td><button class="b b-dark b-sm" data-esc="${i}">Escuchar</button></td>
-        </tr>`).join('')}</table>`;
+  let relojEscucha = null;
+
+  async function abrirEscucha() {
+    await pintarEscucha();
+
+    clearInterval(relojEscucha);
+    relojEscucha = setInterval(() => {
+      const v = document.querySelector('.vista.on');
+      if (v && v.dataset.v === 'escucha') pintarEscucha();
+      else { clearInterval(relojEscucha); relojEscucha = null; }
+    }, 5000);
   }
 
-  $$('tablaEscucha')?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-esc]');
+  async function pintarEscucha() {
+    let estado;
+    try {
+      estado = await servicio.estadoEnVivo();
+    } catch (e) {
+      $$('tablaEscucha').innerHTML =
+        `<div class="vacio">No se pudo consultar: ${seguro.texto(e.message)}</div>`;
+      return;
+    }
+
+    /* Solo los que están hablando ahora mismo */
+    const activas = (estado.agentes || []).filter((a) => a.estado === 'En llamada');
+
+    $$('escN').textContent = activas.length;
+
+    if (!activas.length) {
+      $$('tablaEscucha').innerHTML =
+        '<div class="vacio">No hay llamadas activas en este momento.</div>';
+      return;
+    }
+
+    $$('tablaEscucha').innerHTML = `<div style="overflow-x:auto"><table class="tb">
+      <tr><th>Agente</th><th>Ext.</th><th>Número</th><th>Campaña</th>
+          <th>Duración</th><th></th></tr>
+      ${activas.map((a) => `<tr>
+        <td><b>${seguro.texto(a.nombre)}</b></td>
+        <td class="mono">${seguro.celda(a.extension)}</td>
+        <td class="mono">${seguro.celda(a.numero)}</td>
+        <td>${seguro.celda(a.campana)}</td>
+        <td class="mono">${duracion(Math.round((Date.now() - new Date(a.desde)) / 1000))}</td>
+        <td style="white-space:nowrap;text-align:right">
+          <button class="b b-dark b-sm" data-oir="${seguro.texto(a.extension)}"
+                  data-modo="escuchar" data-nombre="${seguro.texto(a.nombre)}"
+                  title="Solo oír, sin que lo noten">Escuchar</button>
+          <button class="b b-gh b-sm" data-oir="${seguro.texto(a.extension)}"
+                  data-modo="susurrar" data-nombre="${seguro.texto(a.nombre)}"
+                  title="Hablarle al agente sin que el cliente oiga">Susurrar</button>
+        </td>
+      </tr>`).join('')}</table></div>`;
+  }
+
+  /* ── Entrar a una llamada ──
+     El servidor comprueba que el agente sea de una campaña suya y deja
+     registro de quién escuchó a quién. */
+  $$('tablaEscucha')?.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-oir]');
     if (!b) return;
-    escuchando = true;
-    $$('escuchaActiva').style.display = '';
-    $$('escDetalle').textContent =
-      `${ui.sesion?.nombre || 'Agente'} · ${telefonia.numero || '—'}`;
-    aviso('Escucha iniciada. El agente y el cliente no lo perciben.', 'av-b');
+
+    const susurro = b.dataset.modo === 'susurrar';
+    const texto = susurro
+      ? `Vas a hablarle a ${b.dataset.nombre}. El cliente no te escuchará.`
+      : `Vas a escuchar la llamada de ${b.dataset.nombre}. Ni el agente ni el cliente lo notarán.`;
+
+    if (!confirm(`${texto}\n\nTu extensión va a sonar: contesta para entrar.`)) return;
+
+    b.disabled = true;
+    try {
+      await servicio.escuchar(b.dataset.oir, b.dataset.modo);
+
+      escuchando = b.dataset.oir;
+      $$('escuchaActiva').style.display = '';
+      $$('escDetalle').textContent =
+        `${b.dataset.nombre} · extensión ${b.dataset.oir} · ${susurro ? 'susurrando' : 'escuchando'}`;
+      aviso('Contesta tu extensión para entrar a la llamada.', 'av-b');
+    } catch (err) {
+      aviso(err.message, 'av-a');
+    } finally {
+      b.disabled = false;
+    }
   });
 
+  /* Para salir basta con colgar: la escucha vive en la llamada del
+     supervisor, no en la plataforma. */
   $$('btnDejarEscucha')?.addEventListener('click', () => {
+    if (telefonia.estado !== 'reposo') telefonia.colgar();
     escuchando = null;
     $$('escuchaActiva').style.display = 'none';
     aviso('Escucha finalizada.', 'av-b');

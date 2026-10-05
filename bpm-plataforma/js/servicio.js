@@ -421,6 +421,10 @@ const servicio = (() => {
   const seguimientoBase = (id, estado) =>
     api('GET', `/bases/${id}/contactos` + (estado ? '?estado=' + encodeURIComponent(estado) : ''));
 
+  /** Entra a oír una llamada en curso. El servidor comprueba que el
+      agente sea de una campaña del supervisor y lo deja registrado. */
+  const escuchar = (extension, modo) => api('POST', '/escucha', { extension, modo });
+
   /** Estado del canal con la central y del motor de marcación. */
   const estadoMotor = () => api('GET', '/marcacion/motor');
 
@@ -760,7 +764,7 @@ const servicio = (() => {
     leerTabla, subirAudio, listarAudios,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
-    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor,
+    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, escuchar,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
