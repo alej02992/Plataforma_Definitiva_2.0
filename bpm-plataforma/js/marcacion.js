@@ -51,8 +51,60 @@ const marcacion = (() => {
      ═══════════════════════════════════════════════════════════════ */
 
   async function abrir() {
+    await pintarCanal();
     await llenarCampanas();
     await pintarLista();
+  }
+
+  /* ── Estado del canal con la central ──
+     Si está caído, una base automática no marca a nadie. Conviene que
+     se vea de entrada y no haya que averiguarlo. */
+  async function pintarCanal() {
+    if (!$m('canalMarcacion')) return;
+
+    let r;
+    try { r = await servicio.estadoMotor(); }
+    catch { r = null; }
+
+    if (!r) {
+      $m('caEstado').className = 't o';
+      $m('caEstado').textContent = 'Sin información';
+      $m('caDetalle').innerHTML = '<div class="vacio">No se pudo consultar el estado.</div>';
+      return;
+    }
+
+    const canal = r.canal || {};
+
+    if (!canal.habilitado) {
+      $m('caEstado').className = 't o';
+      $m('caEstado').textContent = 'Desactivado';
+      $m('caDetalle').innerHTML = avisoCaja('av-a',
+        'El canal con la central no está configurado en el servidor. ' +
+        'Las bases pueden usarse en marcación manual.');
+      return;
+    }
+
+    if (canal.conectado) {
+      $m('caEstado').className = 't g';
+      $m('caEstado').textContent = 'Conectado';
+
+      const ultimas = (r.ultimas || []).slice(0, 6).map((x) =>
+        `<div class="cf-item"><b>${seguro.texto(String(x.cuando).slice(11, 19))}</b>
+          <span>${seguro.texto(x.texto)}</span></div>`).join('');
+
+      $m('caDetalle').innerHTML = avisoCaja('av-b',
+        `La central responde. El motor ${r.andando ? 'está activo' : 'no está activo'}.`) +
+        (ultimas ? `<div class="cf-rejilla">${ultimas}</div>` : '');
+      return;
+    }
+
+    $m('caEstado').className = 't r';
+    $m('caEstado').textContent = 'Desconectado';
+    $m('caDetalle').innerHTML = avisoCaja('av-r',
+      'No hay conexión con la central: las bases automáticas no están marcando. ' +
+      (canal.ultimoError || '')) +
+      `<div class="hint">Reintentos: ${seguro.texto(canal.intentos ?? 0)}. ` +
+      'Se reconecta sola; si no vuelve, avisa al área de tecnología.</div>';
   }
 
   async function llenarCampanas() {
@@ -111,6 +163,11 @@ const marcacion = (() => {
       .forEach((i) => { i.checked = puestos.includes(i.value); });
   }
 
+  const alternarAuto = () => {
+    $m('baSimulBox').style.display = $m('baAuto').checked ? '' : 'none';
+  };
+  $m('baAuto').addEventListener('change', alternarAuto);
+
   $m('btnBaNueva').addEventListener('click', () => {
     base = null;
     $m('editorBase').style.display = '';
@@ -123,6 +180,9 @@ const marcacion = (() => {
     $m('baDesde').value = '08:00';
     $m('baHasta').value = '19:00';
     marcarDias('L,M,X,J,V');
+    $m('baAuto').checked = false;
+    $m('baSimultaneas').value = '1';
+    alternarAuto();
     $m('btnBaBorrar').style.display = 'none';
     ['contactosBase', 'seguimientoBase', 'lanzarBase']
       .forEach((id) => { $m(id).style.display = 'none'; });
@@ -150,6 +210,9 @@ const marcacion = (() => {
     $m('baDesde').value = (base.hora_inicio || '08:00').slice(0, 5);
     $m('baHasta').value = (base.hora_fin || '19:00').slice(0, 5);
     marcarDias(base.dias || 'L,M,X,J,V');
+    $m('baAuto').checked = !!base.marcacion_auto;
+    $m('baSimultaneas').value = Number(base.simultaneas) || 1;
+    alternarAuto();
     $m('btnBaBorrar').style.display = '';
 
     /* Con la base activa no se cambian las reglas a mitad de camino */
@@ -173,6 +236,8 @@ const marcacion = (() => {
       hora_inicio: $m('baDesde').value + ':00',
       hora_fin: $m('baHasta').value + ':00',
       dias: diasMarcados(),
+      marcacion_auto: $m('baAuto').checked,
+      simultaneas: Number($m('baSimultaneas').value) || 1,
     };
     if (!datos.dias) { aviso('Marca al menos un día.', 'av-a'); return; }
 
@@ -405,9 +470,12 @@ const marcacion = (() => {
         '<div class="ctrls"><button class="b b-teal" data-ba-estado="activa">Activar</button></div>';
     }
 
+    const modo = base.marcacion_auto
+      ? 'Marcación automática: el sistema llama solo cuando un agente queda libre.'
+      : 'Marcación manual: el agente recibe el contacto y pulsa Llamar.';
+
     $m('baLanzar').innerHTML = cuerpo +
-      '<div class="hint" style="margin-top:8px">La marcación automática todavía no está ' +
-      'habilitada: por ahora el agente pulsa Llamar cuando recibe el contacto.</div>';
+      `<div class="hint" style="margin-top:8px">${seguro.texto(modo)}</div>`;
   }
 
   $m('baLanzar').addEventListener('click', async (e) => {
@@ -602,5 +670,5 @@ const marcacion = (() => {
     $m('tarjetaMarcador').style.display = 'none';
   }
 
-  return { abrir, pedirSiguiente, soltar };
+  return { abrir, pedirSiguiente, soltar, pintarCanal };
 })();

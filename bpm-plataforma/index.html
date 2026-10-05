@@ -646,6 +646,14 @@
 
       <!-- ══════ MARCACIÓN · supervisor y administrador ══════ -->
       <section class="vista" data-v="marcacion">
+        <!-- Si el canal con la central se cae, las bases automáticas
+             dejan de marcar. Esto lo dice sin entrar al servidor. -->
+        <div class="c" id="canalMarcacion">
+          <div class="c-h"><h2>Canal con la central</h2>
+            <span class="t o" id="caEstado">Consultando…</span></div>
+          <div id="caDetalle"></div>
+        </div>
+
         <div class="c">
           <div class="c-h"><h2>Bases de marcación</h2>
             <button class="b b-teal b-sm" id="btnBaNueva">Crear</button></div>
@@ -677,6 +685,20 @@
           <div class="r2">
             <div class="f"><label>Desde</label><input class="fi" id="baDesde" type="time" value="08:00"></div>
             <div class="f"><label>Hasta</label><input class="fi" id="baHasta" type="time" value="19:00"></div>
+          </div>
+
+          <div class="f">
+            <label class="chk"><input type="checkbox" id="baAuto">
+              Marcar automáticamente</label>
+            <div class="hint">Con esto, el sistema llama solo cuando un agente queda libre.
+              Sin esto, el agente recibe el contacto y pulsa Llamar.</div>
+          </div>
+
+          <div class="f" id="baSimulBox" style="display:none">
+            <label>Llamadas por agente libre</label>
+            <input class="fi mono" id="baSimultaneas" type="number" min="1" max="2" step="0.1" value="1">
+            <div class="hint">1 es lo recomendado: nunca hay un cliente esperando.
+              Por encima de 1 se marca de más, y alguien puede contestar sin que haya agente.</div>
           </div>
 
           <div class="f"><label>Días que se llama</label>

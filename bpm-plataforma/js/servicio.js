@@ -421,6 +421,9 @@ const servicio = (() => {
   const seguimientoBase = (id, estado) =>
     api('GET', `/bases/${id}/contactos` + (estado ? '?estado=' + encodeURIComponent(estado) : ''));
 
+  /** Estado del canal con la central y del motor de marcación. */
+  const estadoMotor = () => api('GET', '/marcacion/motor');
+
   /** El siguiente contacto para este agente. El servidor lo marca como
       suyo antes de devolverlo, así que dos agentes nunca reciben el
       mismo. */
@@ -757,7 +760,7 @@ const servicio = (() => {
     leerTabla, subirAudio, listarAudios,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
-    siguienteContacto, resultadoContacto, soltarContacto,
+    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,
