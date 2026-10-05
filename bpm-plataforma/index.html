@@ -694,6 +694,13 @@
               Sin esto, el agente recibe el contacto y pulsa Llamar.</div>
           </div>
 
+          <div class="f" id="baCierreBox" style="display:none">
+            <label>Tiempo de cierre</label>
+            <input class="fi mono" id="baCierre" type="number" min="0" max="300" value="30">
+            <div class="hint">Segundos que tiene el agente, después de colgar, para escribir
+              el resultado antes de que entre la siguiente llamada. Con 0, entra enseguida.</div>
+          </div>
+
           <div class="f" id="baSimulBox" style="display:none">
             <label>Llamadas por agente libre</label>
             <input class="fi mono" id="baSimultaneas" type="number" min="1" max="2" step="0.1" value="1">
