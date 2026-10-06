@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -120,6 +121,8 @@ const MENU = [
     icono:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>' },
   { v:'usuarios', et:'Usuarios y roles', permiso:'usuarios',
     icono:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/>' },
+  { v:'seguridad', et:'Seguridad', permiso:'usuarios',
+    icono:'<path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/>' },
   { v:'modulos', et:'Módulos', permiso:'modulos',
     icono:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
   { v:'diag', et:'Diagnóstico', permiso:'telefonia',
@@ -174,6 +177,7 @@ function irA(vista) {
     if (vista === 'blaster' && typeof blaster !== 'undefined') blaster.abrir();
     if (vista === 'sms' && typeof mensajes !== 'undefined') mensajes.abrir();
     if (vista === 'marcacion' && typeof marcacion !== 'undefined') marcacion.abrir();
+    if (vista === 'seguridad' && typeof seguridad !== 'undefined') seguridad.abrir();
     if (vista === 'campanas') {
       administracion.abrirCampanas();
       if (typeof gestionEstados !== 'undefined') gestionEstados.abrir();

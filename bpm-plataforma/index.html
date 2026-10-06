@@ -1031,6 +1031,63 @@
         </div>
       </section>
 
+      <!-- ══════ SEGURIDAD · superadmin ══════ -->
+      <section class="vista" data-v="seguridad">
+        <div class="c" id="tarjetaBloqueados" style="display:none">
+          <div class="c-h"><h2>Cuentas bloqueadas</h2><span class="t r" id="segN">0</span></div>
+          <p class="c-sub">No pueden entrar hasta que las liberes.</p>
+          <div id="tablaBloqueados"></div>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Política de contraseñas</h2></div>
+          <p class="c-sub">Estas reglas se aplican a todos los usuarios. Los cambios
+            valen desde el siguiente inicio de sesión.</p>
+
+          <div class="r2">
+            <div class="f"><label>Expiración de contraseña</label>
+              <input class="fi mono" id="segExpira" type="number" min="0" max="365">
+              <div class="hint">Días antes de tener que cambiarla. 0 = nunca vence.</div></div>
+            <div class="f"><label>Intentos fallidos</label>
+              <input class="fi mono" id="segIntentos" type="number" min="0" max="20">
+              <div class="hint">Fallos seguidos antes de bloquear la cuenta. 0 = sin bloqueo.</div></div>
+          </div>
+
+          <div class="r2">
+            <div class="f"><label>Duración del bloqueo</label>
+              <input class="fi mono" id="segBloqueo" type="number" min="0" max="1440">
+              <div class="hint">Minutos. 0 = hasta que un administrador lo quite.</div></div>
+            <div class="f"><label>Contraseñas que no puede repetir</label>
+              <input class="fi mono" id="segHistorial" type="number" min="0" max="24">
+              <div class="hint">Las últimas que usó. 0 = puede repetir.</div></div>
+          </div>
+
+          <div class="f"><label>Desactivar usuario inactivo</label>
+            <input class="fi mono" id="segInactivo" type="number" min="0" max="365">
+            <div class="hint">Días sin entrar. 0 = nunca se desactiva.</div></div>
+
+          <div class="f"><label>Formato de la contraseña</label>
+            <div class="r2" style="margin-top:4px">
+              <div class="f" style="margin:0"><label>Largo mínimo</label>
+                <input class="fi mono" id="segLargo" type="number" min="4" max="64"></div>
+              <div class="f" style="margin:0">
+                <label class="chk"><input type="checkbox" id="segMinus"> Minúsculas</label>
+                <label class="chk"><input type="checkbox" id="segMayus"> Mayúsculas</label>
+                <label class="chk"><input type="checkbox" id="segNum"> Números</label>
+                <label class="chk"><input type="checkbox" id="segEsp"> Caracteres especiales</label>
+              </div>
+            </div>
+          </div>
+
+          <div id="segAvisos"></div>
+
+          <div class="ctrls">
+            <button class="b b-teal" id="btnSegGuardar">Guardar política</button>
+            <button class="b b-gh" id="btnSegInactivos">Desactivar inactivos ahora</button>
+          </div>
+        </div>
+      </section>
+
       <!-- ══════ MÓDULOS · superadmin ══════ -->
       <section class="vista" data-v="modulos">
         <div class="c">
@@ -1156,6 +1213,7 @@
 <script src="js/blaster.js"></script>
 <script src="js/sms.js"></script>
 <script src="js/marcacion.js"></script>
+<script src="js/seguridad.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>

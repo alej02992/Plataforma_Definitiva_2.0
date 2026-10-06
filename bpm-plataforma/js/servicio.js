@@ -405,6 +405,14 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /* ── Seguridad ── */
+
+  const leerPolitica = () => api('GET', '/seguridad/politica');
+  const guardarPolitica = (datos) => api('PUT', '/seguridad/politica', datos);
+  const cuentasBloqueadas = () => api('GET', '/seguridad/bloqueados');
+  const desbloquearCuenta = (id) => api('POST', `/seguridad/desbloquear/${id}`);
+  const desactivarInactivos = () => api('POST', '/seguridad/inactivos');
+
   /* ── Marcación ── */
 
   const listarBases = () => api('GET', '/bases');
@@ -759,12 +767,14 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
+    leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
     siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, escuchar,
