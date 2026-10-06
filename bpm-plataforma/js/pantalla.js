@@ -434,6 +434,7 @@ function abrirTipificadorEnCaliente() {
   if ($('tipForm').style.display === 'block') return;   // ya está abierto
   $('tipBloq').style.display = 'none';
   $('tipForm').style.display = 'block';
+  pintarQuienLlamo();
   $('tipCd').style.display = 'none';                    // sin cuenta regresiva
   $('tipTag').className = 't b';
   $('tipTag').textContent = 'En caliente';
@@ -453,10 +454,47 @@ async function llenarCatalogo() {
     Object.keys(catalogoActivo).map((c) => `<option>${c}</option>`).join('');
 }
 
+/**
+ * Pinta arriba del tipificador con quién se habló: número, nombre si se
+ * conoce, dirección y duración.
+ *
+ * Nada de esto lo escribe el agente, porque el sistema ya lo sabe. Está
+ * para que no se equivoque de registro cuando entran varias llamadas
+ * seguidas, que es cuando se cometen los errores.
+ */
+function pintarQuienLlamo() {
+  if (!$('tipQuien')) return;
+
+  /* Durante la llamada los datos están en la telefonía; al terminar,
+     en la llamada pendiente de tipificar. */
+  const d = ui.pendiente || {};
+  const numero = d.numero || telefonia.numero;
+  if (!numero) { $('tipQuien').innerHTML = ''; return; }
+
+  const entrante = (d.direccion || telefonia.direccion) === 'entrante';
+  const segundos = d.segundos || 0;
+
+  /* Si la llamada salió de una base de marcación, el nombre del
+     contacto ya se conoce y vale la pena mostrarlo. */
+  const nombre = d.nombre || null;
+
+  const mm = String(Math.floor(segundos / 60)).padStart(2, '0');
+  const ss = String(segundos % 60).padStart(2, '0');
+
+  $('tipQuien').innerHTML = `
+    <div class="tq-fila">
+      <span class="tq-dir ${entrante ? 'ent' : 'sal'}">${entrante ? 'Entrante' : 'Saliente'}</span>
+      <b class="mono">${seguro.texto(numero)}</b>
+      ${nombre ? `<span class="tq-nom">${seguro.texto(nombre)}</span>` : ''}
+      <span class="tq-dur mono">${mm}:${ss}</span>
+    </div>`;
+}
+
 function abrirTipificador() {
   $('tipBloq').style.display = 'none';
   $('tipForm').style.display = 'block';
   $('tipCd').style.display = '';
+  pintarQuienLlamo();
   $('tipTag').className = 't a'; $('tipTag').textContent = 'Pendiente';
 
   /* Si el agente ya tipificó en caliente, no se borra lo escrito. */
@@ -470,9 +508,16 @@ function abrirTipificador() {
   ui.acwSeg = Number($('rngAcw').value) || CONFIG.acw;
   $('tipSeg').textContent = ui.acwSeg;
   clearInterval(ui.acwId);
+  $('tipCd').className = 'tip-cd';
+
   ui.acwId = setInterval(() => {
     ui.acwSeg--;
     $('tipSeg').textContent = ui.acwSeg;
+
+    /* El aviso visual aparece en los últimos 20 segundos. Antes sería
+       ruido; después, demasiado tarde para reaccionar. */
+    if (ui.acwSeg <= 20) $('tipCd').className = 'tip-cd urge';
+
     if (ui.acwSeg <= 0) {
       clearInterval(ui.acwId);
       aviso('Se acabó el tiempo de cierre. La llamada se guardó sin tipificar.', 'av-a');

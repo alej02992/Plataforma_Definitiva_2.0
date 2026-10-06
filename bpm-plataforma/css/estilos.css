@@ -1,12 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════
-   BPM Consulting — Escritorio del Agente
-   Hoja de estilos
-   ---------------------------------------------------------------
-   Los colores de marca están en :root. Son provisionales: cuando
-   llegue el manual de marca se cambian ahí y toda la aplicación
-   se actualiza sola.
-   ═══════════════════════════════════════════════════════════════ */
-
 :root{
   /* ═══════════════════════════════════════════════════════════════
      PALETA DE MARCA — BPM Consulting
@@ -649,3 +640,19 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .cola-dato span{font-size:10.5px;color:var(--ink-3)}
 .cola-cola{font-weight:700;color:var(--teal-d)}
 .cola-espera{flex:none;font-size:11px;font-weight:700;color:var(--ink-3)}
+
+/* ══════════ CON QUIÉN SE HABLÓ · tipificación ══════════ */
+.tip-quien{margin-bottom:10px}
+.tq-fila{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:8px 11px}
+.tq-fila b{font-size:14px;color:var(--ink)}
+.tq-dir{font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+  border-radius:5px;padding:3px 7px}
+.tq-dir.ent{background:var(--secondary-l);color:var(--secondary-d)}
+.tq-dir.sal{background:#E8FAF8;color:var(--teal-d)}
+.tq-nom{font-size:12px;color:var(--ink-2);font-weight:600}
+.tq-dur{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-3)}
+
+/* Los últimos segundos del cierre */
+.tip-cd.urge{background:var(--danger-l);border-color:#F3B9B9;color:var(--danger)}
+.tip-cd.urge b{color:var(--danger)}

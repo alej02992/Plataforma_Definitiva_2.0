@@ -279,9 +279,14 @@
               </div>
 
               <div id="tipForm" style="display:none">
+                <!-- Con quién se habló. No lo escribe el agente: lo sabe
+                     el sistema. Está para que no se confunda de registro
+                     cuando entran varias llamadas seguidas. -->
+                <div class="tip-quien" id="tipQuien"></div>
+
                 <div class="tip-cd" id="tipCd">
                   <svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                  <div>Tiempo de cierre restante: <b id="tipSeg">60</b> s</div>
+                  <div>Tiempo de cierre restante: <b id="tipSeg">120</b> s</div>
                 </div>
 
                 <div class="f">
@@ -1149,8 +1154,8 @@
             <label class="chk"><input type="checkbox" id="chkFlash" checked> Destellar la pantalla al entrar una llamada</label>
             <div class="rule"></div>
             <div class="f">
-              <label>Tiempo de cierre (ACW) <span class="vu-val" id="acwVal">60 s</span></label>
-              <input type="range" class="rng" id="rngAcw" min="15" max="180" step="15" value="60">
+              <label>Tiempo de cierre (ACW) <span class="vu-val" id="acwVal">120 s</span></label>
+              <input type="range" class="rng" id="rngAcw" min="15" max="300" step="15" value="120">
               <div class="hint">Tiempo disponible para tipificar antes de la siguiente llamada.</div>
             </div>
           </div>
