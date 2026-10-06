@@ -169,7 +169,7 @@ function irA(vista) {
   if (typeof supervision !== 'undefined') {
     if (vista === 'supervision') supervision.iniciar(); else supervision.detener();
   }
-  if (vista === 'reportes' && typeof reporteLlamadas !== 'undefined') reporteLlamadas.abrir();
+  if (vista === 'reportes' && typeof reportes !== 'undefined') reportes.abrir();
   if (vista === 'formularios' && typeof formularios !== 'undefined') formularios.abrirAgente();
   if (vista === 'disenador' && typeof formularios !== 'undefined') formularios.abrirDisenador();
 

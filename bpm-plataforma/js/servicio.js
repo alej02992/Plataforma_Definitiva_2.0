@@ -405,6 +405,19 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /* ── Reportería ── */
+
+  const comoTexto = (f) => new URLSearchParams(
+    Object.entries(f || {}).filter(([, v]) => v !== '' && v != null)).toString();
+
+  const reporteTipificaciones = (f) => api('GET', '/reportes/tipificaciones?' + comoTexto(f));
+  const reporteSesiones = (f) => api('GET', '/reportes/sesiones?' + comoTexto(f));
+
+  /** El archivo lo arma el servidor y llega como texto; la plataforma
+      lo vuelve a convertir en archivo para descargarlo. */
+  const exportarReporte = (reporte, formato, filas, periodo) =>
+    api('POST', '/reportes/exportar', { reporte, formato, filas, periodo });
+
   /* ── Seguridad ── */
 
   /** Qué debe cumplir una contraseña. La puede consultar cualquiera
@@ -774,13 +787,13 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
-
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
+    reporteLlamadas, reporteTipificaciones, reporteSesiones, exportarReporte,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
@@ -791,7 +804,7 @@ const servicio = (() => {
     revisarDestinos, cargarDestinos, listarDestinos, cambiarEstadoBlaster, respuestasBlaster,
     pausasExcedidas,
     campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva, eliminarUsuarioDefinitivo,
-    registrarLlamadaServidor, reporteLlamadas,
+    registrarLlamadaServidor,
     estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
     eliminarFormulario, enviarRespuesta,

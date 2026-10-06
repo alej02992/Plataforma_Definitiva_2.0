@@ -656,3 +656,12 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 /* Los últimos segundos del cierre */
 .tip-cd.urge{background:var(--danger-l);border-color:#F3B9B9;color:var(--danger)}
 .tip-cd.urge b{color:var(--danger)}
+
+/* ══════════ REPARTO POR RESULTADO ══════════ */
+.rep-fila{display:flex;align-items:center;gap:9px;padding:5px 0}
+.rep-nom{flex:none;width:150px;font-size:12px;font-weight:600;color:var(--ink-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rep-barra{flex:1;height:9px;background:var(--soft);border-radius:5px;overflow:hidden}
+.rep-barra i{display:block;height:100%;background:var(--teal);border-radius:5px}
+.rep-num{flex:none;width:44px;text-align:right;font-size:12px;font-weight:700;color:var(--ink)}
+.rep-pct{flex:none;width:52px;text-align:right;font-size:11px;color:var(--ink-3)}

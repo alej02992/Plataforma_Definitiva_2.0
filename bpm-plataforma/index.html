@@ -410,43 +410,74 @@
       <!-- ══════ REPORTES ══════ -->
       <section class="vista" data-v="reportes">
         <div class="c">
-          <div class="c-h"><h2>Reporte de llamadas</h2><span class="t o" id="rlTag">—</span></div>
-          <p class="c-sub">Cada llamada gestionada en la plataforma: quién la hizo,
-            a qué número, cuánto duró y cómo se tipificó.</p>
-          <div class="r2">
-            <div class="f"><label>Desde</label><input class="fi" type="date" id="rlDesde"></div>
-            <div class="f"><label>Hasta</label><input class="fi" type="date" id="rlHasta"></div>
+          <div class="c-h"><h2>Reportería</h2><span class="t o" id="rpTag">—</span></div>
+
+          <!-- Los tres reportes comparten filtros y descargas: lo que
+               cambia es qué se consulta y qué columnas se muestran. -->
+          <div class="tabs" id="rpTipo">
+            <button class="tab on" data-r="llamadas">Llamadas</button>
+            <button class="tab" data-r="tipificaciones">Tipificación</button>
+            <button class="tab" data-r="sesiones">Inicio de sesión</button>
           </div>
+          <p class="c-sub" id="rpAyuda">Cada llamada gestionada en la plataforma: quién la
+            hizo, a qué número, cuánto duró y cómo se tipificó.</p>
+
+          <div class="r2">
+            <div class="f"><label>Desde</label><input class="fi" type="date" id="rpDesde"></div>
+            <div class="f"><label>Hasta</label><input class="fi" type="date" id="rpHasta"></div>
+          </div>
+
           <div class="r2">
             <div class="f"><label>Agente</label>
-              <select class="fi" id="rlAgente"><option value="">Todos</option></select></div>
-            <div class="f"><label>Estado</label>
-              <select class="fi" id="rlEstado">
+              <select class="fi" id="rpAgente"><option value="">Todos</option></select></div>
+
+            <div class="f" id="rpEstadoBox"><label>Estado</label>
+              <select class="fi" id="rpEstado">
                 <option value="">Todas</option>
                 <option value="contestada">Contestadas</option>
                 <option value="no_contestada">No contestadas</option>
               </select></div>
+
+            <div class="f" id="rpResultadoBox" style="display:none"><label>Resultado</label>
+              <input class="fi" id="rpResultado" placeholder="Todo o parte del resultado"
+                     autocomplete="off"></div>
           </div>
-          <div class="f"><label>Número</label>
-            <input class="fi mono" id="rlNumero" placeholder="Todo o parte del número" autocomplete="off"></div>
+
+          <div class="f" id="rpNumeroBox"><label>Número</label>
+            <input class="fi mono" id="rpNumero" placeholder="Todo o parte del número"
+                   autocomplete="off"></div>
+
           <div class="ctrls">
-            <button class="b b-teal" id="btnRlConsultar">Consultar</button>
-            <button class="b b-gh" id="btnRlCsv">Descargar CSV</button>
+            <button class="b b-teal" id="btnRpConsultar">Consultar</button>
+            <button class="b b-gh" data-bajar="csv">CSV</button>
+            <button class="b b-gh" data-bajar="excel">Excel</button>
+            <button class="b b-gh" data-bajar="pdf">PDF</button>
           </div>
         </div>
 
-        <div class="tarjetas" id="rlResumen"></div>
+        <div class="tarjetas" id="rpResumen"></div>
+
+        <!-- Cómo se reparten los resultados. Solo en tipificación. -->
+        <div class="c" id="rpRepartoBox" style="display:none">
+          <div class="c-h"><h2>Reparto por resultado</h2></div>
+          <div id="rpReparto"></div>
+        </div>
 
         <div class="c">
-          <div id="rlTabla"><div class="vacio">Pulsa Consultar para ver las llamadas.</div></div>
+          <div id="rpTabla"><div class="vacio">Pulsa Consultar para ver el reporte.</div></div>
         </div>
 
-        <!-- Elementos del reporte anterior. El módulo de supervisión aún
-             los busca al arrancar; se conservan ocultos para no romperlo. -->
+        <!-- Elementos de versiones anteriores. Otros módulos aún los
+             buscan al arrancar; se conservan ocultos para no romperlos. -->
         <div style="display:none">
           <div id="listaReportes"></div>
           <div id="repResultado"><span id="repTitulo"></span><span id="repSub"></span>
             <div id="repTabla"></div><button id="btnDescargarCsv"></button></div>
+          <span id="rlTag"></span>
+          <input id="rlDesde"><input id="rlHasta"><select id="rlAgente"></select>
+          <select id="rlEstado"></select><input id="rlNumero">
+          <button id="btnRlConsultar"></button><button id="btnRlCsv"></button>
+          <div id="rlResumen"></div><div id="rlTabla"></div>
         </div>
       </section>
 
