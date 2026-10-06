@@ -407,6 +407,10 @@ const servicio = (() => {
 
   /* ── Seguridad ── */
 
+  /** Qué debe cumplir una contraseña. La puede consultar cualquiera
+      que esté cambiando la suya. */
+  const reglasClave = () => api('GET', '/seguridad/reglas');
+
   const leerPolitica = () => api('GET', '/seguridad/politica');
   const guardarPolitica = (datos) => api('PUT', '/seguridad/politica', datos);
   const cuentasBloqueadas = () => api('GET', '/seguridad/bloqueados');
@@ -774,7 +778,7 @@ const servicio = (() => {
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
-    leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
+    reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
     siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, escuchar,

@@ -1212,6 +1212,7 @@ async function entrar() {
       ui.sesionPendiente = sesion;
       $('login').style.display = 'none';
       $('cambioClave').style.display = '';
+      cargarReglasClave();
       $('ccActual').value = clave;      // ya la escribió al entrar
       $('ccNueva').focus();
       btn.disabled = false; btn.textContent = 'Iniciar sesión';
@@ -1360,6 +1361,62 @@ $('btnDescargarCsv').addEventListener('click', () => supervision.descargarCsv())
 
 /* ═══════════ CAMBIO DE CONTRASEÑA ═══════════ */
 
+/* Las reglas las define el administrador en Seguridad, así que se le
+   preguntan al servidor en vez de darlas por sabidas. Si no se pueden
+   consultar —porque la sesión aún no está completa— se usan las
+   mínimas, y el servidor igual rechaza lo que no cumpla. */
+let reglasClave = null;
+
+async function cargarReglasClave() {
+  try {
+    reglasClave = await servicio.reglasClave();
+  } catch {
+    reglasClave = { largo_minimo: 8, exige_minusculas: 1, exige_mayusculas: 1,
+                    exige_numeros: 1, exige_especiales: 0 };
+  }
+  pintarReglas();
+}
+
+/** Qué pide cada regla y si la contraseña escrita la cumple. */
+function reglasDe(clave) {
+  const r = reglasClave || {};
+  const c = String(clave || '');
+  const lista = [
+    { texto: `${r.largo_minimo || 8} caracteres`, ok: c.length >= (r.largo_minimo || 8) },
+  ];
+  if (r.exige_minusculas) lista.push({ texto: 'una minúscula', ok: /[a-záéíóúñ]/.test(c) });
+  if (r.exige_mayusculas) lista.push({ texto: 'una mayúscula', ok: /[A-ZÁÉÍÓÚÑ]/.test(c) });
+  if (r.exige_numeros)    lista.push({ texto: 'un número', ok: /[0-9]/.test(c) });
+  if (r.exige_especiales) {
+    lista.push({ texto: 'un símbolo', ok: /[^A-Za-z0-9áéíóúñÁÉÍÓÚÑ]/.test(c) });
+  }
+  return lista;
+}
+
+/** Pinta las reglas y la barra de fuerza mientras la persona escribe. */
+function pintarReglas() {
+  if (!$('ccReglas')) return;
+  const clave = $('ccNueva')?.value || '';
+  const lista = reglasDe(clave);
+
+  const visto = `<svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>`;
+  const punto = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>`;
+
+  $('ccReglas').innerHTML = lista.map((x) =>
+    `<span class="cc-regla${x.ok ? ' ok' : ''}">${x.ok ? visto : punto}${seguro.texto(x.texto)}</span>`
+  ).join('');
+
+  /* La fuerza es orientativa: cuántas reglas cumple y si es larga.
+     No reemplaza lo que valida el servidor. */
+  const cumple = lista.filter((x) => x.ok).length;
+  const nivel = !clave ? 0
+    : cumple < lista.length ? 1
+    : clave.length >= 12 ? 3 : 2;
+
+  $('ccFuerza').className = 'cc-fuerza' + (nivel ? ' f' + nivel : '');
+  $('ccNivel').textContent = ['', 'Le falta algo', 'Aceptable', 'Buena contraseña'][nivel];
+}
+
 function errorCambio(msg) {
   $('ccErr').innerHTML = msg
     ? `<div class="aviso av-r" style="margin-bottom:0;align-items:flex-start"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>${seguro.texto(msg)}</div></div>`
@@ -1371,10 +1428,15 @@ async function cambiarClave() {
   const nueva  = $('ccNueva').value;
   const repite = $('ccRepite').value;
 
-  if (!actual)             return errorCambio('Escribe tu contraseña actual.');
-  if (nueva.length < 8)    return errorCambio('La nueva contraseña debe tener al menos 8 caracteres.');
-  if (nueva !== repite)    return errorCambio('Las dos contraseñas nuevas no coinciden.');
-  if (nueva === actual)    return errorCambio('La nueva contraseña debe ser distinta de la actual.');
+  if (!actual) return errorCambio('Escribe tu contraseña actual.');
+
+  /* Se revisan aquí las mismas reglas que aplica el servidor, para que
+     la persona no tenga que enviar el formulario para enterarse. */
+  const faltan = reglasDe(nueva).filter((x) => !x.ok).map((x) => x.texto);
+  if (faltan.length) return errorCambio('A la contraseña le falta: ' + faltan.join(', ') + '.');
+
+  if (nueva !== repite) return errorCambio('Las dos contraseñas nuevas no coinciden.');
+  if (nueva === actual) return errorCambio('La nueva contraseña debe ser distinta de la actual.');
   errorCambio('');
 
   const btn = $('btnCambiarClave');
@@ -1391,6 +1453,7 @@ async function cambiarClave() {
   /* Cambiada: se entra con la sesión que quedó esperando. */
   $('cambioClave').style.display = 'none';
   $('ccActual').value = $('ccNueva').value = $('ccRepite').value = '';
+  pintarReglas();
   btn.disabled = false; btn.textContent = 'Guardar y continuar';
 
   /* Con la contraseña ya definida, se completa el inicio de sesión:
@@ -1437,6 +1500,18 @@ async function cambiarClave() {
 }
 
 $('btnCambiarClave').addEventListener('click', cambiarClave);
+/* Las reglas se marcan solas al escribir */
+$('ccNueva')?.addEventListener('input', pintarReglas);
+
+/* Ver la contraseña evita la mitad de los errores al escribirla */
+[['ccVer1', 'ccActual'], ['ccVer2', 'ccNueva'], ['ccVer3', 'ccRepite']].forEach(([boton, campo]) => {
+  $(boton)?.addEventListener('click', () => {
+    const c = $(campo);
+    c.type = c.type === 'password' ? 'text' : 'password';
+    c.focus();
+  });
+});
+
 [$('ccActual'), $('ccNueva'), $('ccRepite')].forEach((el) =>
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter') cambiarClave(); }));
 

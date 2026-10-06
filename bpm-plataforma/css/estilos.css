@@ -80,7 +80,9 @@ svg{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;str
 ::-webkit-scrollbar-track{background:transparent}
 
 /* ══════════ PANTALLA DE CONEXIÓN ══════════ */
-#login{position:fixed;inset:0;background:linear-gradient(150deg,#12263A,#0B1826);
+/* El cambio de contraseña usa la misma pantalla que el inicio de
+   sesión: es el mismo momento para la persona, antes de entrar. */
+#login, #cambioClave{position:fixed;inset:0;background:linear-gradient(150deg,#12263A,#0B1826);
   display:grid;place-items:center;z-index:100;overflow-y:auto;padding:24px}
 .lg{background:#fff;border-radius:14px;padding:26px 30px;width:100%;max-width:440px;
   box-shadow:0 18px 50px rgba(0,0,0,.3)}
@@ -606,9 +608,33 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .dias label:hover{border-color:#9FE4FA;background:var(--secondary-l)}
 .dias input{accent-color:var(--secondary);margin:0}
 
-/* ══════════ FICHA DEL CONTACTO EN MARCACIÓN ══════════ */
-.ficha-marcador{background:var(--soft);border:1px solid var(--line);border-radius:9px;
-  padding:11px 13px;margin-bottom:10px}
-.fm-nombre{font-size:15px;font-weight:700;color:var(--ink)}
-.fm-tel{font-size:17px;font-weight:700;color:var(--secondary-d);margin-top:2px}
-.fm-doc{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+
+/* ══════════ CAMBIO DE CONTRASEÑA ══════════
+   Se ve antes de entrar, así que conviene que guíe: qué se pide, qué
+   falta por cumplir y cuándo ya está lista. */
+
+/* Las reglas de la contraseña, marcándose solas al escribir */
+.cc-reglas{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
+.cc-regla{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  color:var(--ink-3);background:var(--soft);border:1px solid var(--line);
+  border-radius:20px;padding:4px 10px;transition:.15s}
+.cc-regla svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.6;
+  fill:none;flex:none}
+.cc-regla.ok{color:var(--teal-d);background:#E8FAF8;border-color:#9FE8E2}
+
+/* Fuerza de la contraseña */
+.cc-fuerza{height:4px;border-radius:3px;background:var(--line);overflow:hidden;
+  margin:-6px 0 6px}
+.cc-fuerza i{display:block;height:100%;width:0;border-radius:3px;transition:.25s}
+.cc-fuerza.f1 i{width:33%;background:var(--danger)}
+.cc-fuerza.f2 i{width:66%;background:#E9A23B}
+.cc-fuerza.f3 i{width:100%;background:var(--teal)}
+.cc-nivel{font-size:10.5px;font-weight:700;color:var(--ink-3);
+  text-align:right;margin:-2px 0 12px}
+
+/* Que se pueda ver lo que se escribe evita la mitad de los errores */
+.cc-campo{position:relative}
+.cc-ojo{position:absolute;right:10px;top:32px;background:none;border:none;
+  cursor:pointer;padding:4px;color:var(--ink-3);line-height:0}
+.cc-ojo svg{width:17px;height:17px;stroke:currentColor;stroke-width:2;fill:none}
+.cc-ojo:hover{color:var(--teal-d)}

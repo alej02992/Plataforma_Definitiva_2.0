@@ -50,20 +50,37 @@
     <p class="lg-sub">Por seguridad, define una contraseña personal antes
       de comenzar. Nadie más debe conocerla.</p>
 
-    <div class="f">
+    <div class="f cc-campo">
       <label>Contraseña actual</label>
       <input class="fi" id="ccActual" type="password" placeholder="La que te entregaron"
              autocomplete="current-password">
+      <button class="cc-ojo" id="ccVer1" type="button" title="Ver la contraseña">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
     </div>
-    <div class="f">
+
+    <div class="f cc-campo">
       <label>Nueva contraseña</label>
-      <input class="fi" id="ccNueva" type="password" placeholder="Mínimo 8 caracteres"
+      <input class="fi" id="ccNueva" type="password" placeholder="Escribe tu nueva contraseña"
              autocomplete="new-password">
+      <button class="cc-ojo" id="ccVer2" type="button" title="Ver la contraseña">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
     </div>
-    <div class="f">
+
+    <!-- Se llenan con las reglas que pide el servidor, y se marcan
+         solas mientras la persona escribe. -->
+    <div class="cc-fuerza" id="ccFuerza"><i></i></div>
+    <div class="cc-nivel" id="ccNivel"></div>
+    <div class="cc-reglas" id="ccReglas"></div>
+
+    <div class="f cc-campo">
       <label>Repite la nueva contraseña</label>
       <input class="fi" id="ccRepite" type="password" placeholder="Escríbela otra vez"
              autocomplete="new-password">
+      <button class="cc-ojo" id="ccVer3" type="button" title="Ver la contraseña">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
     </div>
 
     <div id="ccErr"></div>
