@@ -437,6 +437,9 @@ const servicio = (() => {
       agente sea de una campaña del supervisor y lo deja registrado. */
   const escuchar = (extension, modo) => api('POST', '/escucha', { extension, modo });
 
+  /** Quién está esperando en las colas de este agente. */
+  const llamadasEnCola = () => api('GET', '/cola/mias');
+
   /** Estado del canal con la central y del motor de marcación. */
   const estadoMotor = () => api('GET', '/marcacion/motor');
 
@@ -781,7 +784,7 @@ const servicio = (() => {
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
-    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, escuchar,
+    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, llamadasEnCola, escuchar,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,

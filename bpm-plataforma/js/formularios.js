@@ -264,6 +264,11 @@ const formularios = (() => {
   /* ── La cola de pendientes ─────────────────────────────────────── */
 
   function pintarPendientes() {
+    /* La tarjeta de pendientes se quitó del escritorio: la cola de
+       respuestas sin enviar sigue funcionando por dentro, pero ya no se
+       muestra. Si algún día vuelve, basta con reponer los elementos. */
+    if (!$('pendN')) return;
+
     const lista = servicio.pendientes();
     $('pendN').textContent = lista.length;
     $('pendN').className = 't ' + (lista.length ? 'a' : 'o');
@@ -301,7 +306,7 @@ const formularios = (() => {
     }
   }
 
-  $('btnSincronizar').addEventListener('click', async () => {
+  $('btnSincronizar')?.addEventListener('click', async () => {
     const b = $('btnSincronizar');
     b.disabled = true; b.textContent = 'Enviando…';
     const r = await intentarSincronizar();

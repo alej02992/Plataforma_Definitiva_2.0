@@ -1279,6 +1279,7 @@ async function montarAplicacion(sesion, simulado) {
     formularios.pintarPendientes();
     formularios.abrirAgente();      // carga el formulario de su campaña
     if (typeof marcacion !== 'undefined') marcacion.pedirSiguiente();
+    arrancarCola();
     firmaEstados = '';
     cargarEstados();               // y los estados de pausa de su campaña
 
@@ -1358,6 +1359,71 @@ $('listaReportes').addEventListener('click', (e) => {
 });
 
 $('btnDescargarCsv').addEventListener('click', () => supervision.descargarCsv());
+
+/* ═══════════ LLAMADAS EN COLA ═══════════
+
+   Informativo: cuántas personas esperan en las colas del agente y
+   desde hace cuánto. No se puede tomar una llamada desde aquí ni
+   saltarse el orden —de eso se encarga la central—, pero saber si
+   vienen diez llamadas o ninguna cambia cómo uno trabaja.
+
+   Se consulta cada 5 segundos mientras el agente tiene el escritorio
+   abierto. Una cola cambia todo el tiempo: un dato de hace un minuto
+   no sirve de nada.                                                  */
+
+let relojCola = null;
+
+function arrancarCola() {
+  if (!$('listaCola') || relojCola) return;
+  pintarCola();
+  relojCola = setInterval(pintarCola, 5000);
+}
+
+function detenerCola() {
+  clearInterval(relojCola);
+  relojCola = null;
+}
+
+const esperaTexto = (s) => {
+  const m = Math.floor(s / 60);
+  return m ? `${m} min ${s % 60}s` : `${s}s`;
+};
+
+async function pintarCola() {
+  if (!$('listaCola')) return;
+
+  let r;
+  try { r = await servicio.llamadasEnCola(); }
+  catch { return; }
+
+  if (!r.hay) {
+    $('colaN').textContent = '—';
+    $('colaN').className = 't o';
+    $('listaCola').innerHTML = `<div class="vacio">${seguro.texto(r.motivo || 'Sin información')}</div>`;
+    return;
+  }
+
+  $('colaN').textContent = r.total;
+  /* Con gente esperando se pone en ámbar: es información que el agente
+     debería notar sin ir a buscarla. */
+  $('colaN').className = 't ' + (r.total ? 'a' : 'o');
+
+  if (!r.total) {
+    $('listaCola').innerHTML = '<div class="vacio">No hay nadie esperando en tus colas.</div>';
+    return;
+  }
+
+  $('listaCola').innerHTML = r.llamadas.map((c) => `
+    <div class="cola-fila">
+      <span class="cola-pos">${seguro.texto(c.posicion)}</span>
+      <div class="cola-dato">
+        <b class="mono">${seguro.texto(c.numero)}</b>
+        ${c.nombre ? `<span>${seguro.texto(c.nombre)}</span>` : ''}
+        <span class="cola-cola">${seguro.texto(c.cola)}</span>
+      </div>
+      <span class="cola-espera mono">${seguro.texto(esperaTexto(c.esperando))}</span>
+    </div>`).join('');
+}
 
 /* ═══════════ CAMBIO DE CONTRASEÑA ═══════════ */
 
