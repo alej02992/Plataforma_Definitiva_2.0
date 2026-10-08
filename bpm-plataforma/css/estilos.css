@@ -73,8 +73,10 @@ svg{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;str
 /* ══════════ PANTALLA DE CONEXIÓN ══════════ */
 /* El cambio de contraseña usa la misma pantalla que el inicio de
    sesión: es el mismo momento para la persona, antes de entrar. */
-#login, #cambioClave{position:fixed;inset:0;background:linear-gradient(150deg,#12263A,#0B1826);
-  display:grid;place-items:center;z-index:100;overflow-y:auto;padding:24px}
+/* Las dos pantallas previas al escritorio comparten diseño: ocupan
+   todo y se dividen en marca y contenido. */
+#login, #cambioClave{position:fixed;inset:0;z-index:100;overflow-y:auto;
+  background:#002E44}
 .lg{background:#fff;border-radius:14px;padding:26px 30px;width:100%;max-width:440px;
   box-shadow:0 18px 50px rgba(0,0,0,.3)}
 .lg-h{display:flex;align-items:center;gap:11px;margin-bottom:5px}
@@ -680,3 +682,96 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .vs.sube{color:var(--ok)}
 .vs.baja{color:var(--danger)}
 .vs.igual{color:var(--ink-3)}
+
+/* ══════════════════════════════════════════════════════════════════
+   INICIO DE SESIÓN
+
+   Dos lados: la marca a la izquierda sobre azul brillante, el acceso a
+   la derecha sobre azul profundo. Los dos colores son los de BPM
+   Consulting, así que la pantalla se reconoce antes de leerla.
+
+   En pantallas angostas el lado de la marca se oculta: lo que importa
+   ahí es entrar, no la presentación.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Se declara flex primero y rejilla después: si un navegador viejo no
+   entiende la rejilla, el diseño igual queda en dos columnas. */
+.lgx{display:flex;width:100%;min-height:100vh}
+.lgx>.lgx-marca{flex:1.05}
+.lgx>.lgx-acceso{flex:1}
+@supports (display:grid){
+  .lgx{display:grid;grid-template-columns:1.05fr 1fr}
+}
+
+/* ── Lado de la marca ── */
+.lgx-marca{position:relative;overflow:hidden;display:flex;flex-direction:column;
+  justify-content:space-between;padding:40px 44px;
+  background:linear-gradient(145deg,#00BFFC 0%,#009BCE 48%,#0A4460 100%)}
+
+/* Un trazo suave de fondo, como el de la referencia */
+.lgx-marca::after{content:'';position:absolute;right:-18%;bottom:-28%;
+  width:95%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.22),transparent 62%);
+  pointer-events:none}
+.lgx-marca::before{content:'';position:absolute;left:-30%;top:-20%;
+  width:80%;aspect-ratio:1;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);pointer-events:none}
+
+.lgx-logo{position:relative;z-index:1}
+.lgx-logo img{max-height:52px;max-width:230px;object-fit:contain;
+  filter:brightness(0) invert(1)}
+.lgx-dibujo{display:flex;align-items:center;gap:11px}
+.lgx-dibujo svg{width:42px;height:42px;fill:none;stroke:#fff;stroke-width:3;
+  stroke-linecap:round;stroke-linejoin:round;opacity:.95}
+.lgx-txt{display:flex;flex-direction:column;line-height:1}
+.lgx-txt b{font-size:25px;font-weight:800;color:#fff;letter-spacing:-.8px}
+.lgx-txt span{font-size:13px;color:rgba(255,255,255,.88);letter-spacing:2.6px}
+
+.lgx-centro{position:relative;z-index:1;max-width:400px}
+.lgx-centro h1{font-size:30px;font-weight:800;color:#fff;line-height:1.16;
+  letter-spacing:-.8px;margin-bottom:12px}
+.lgx-centro p{font-size:14px;color:rgba(255,255,255,.86);line-height:1.6}
+
+.lgx-legal{position:relative;z-index:1;font-size:10.5px;line-height:1.6;
+  color:rgba(255,255,255,.72)}
+
+/* ── Lado del acceso ── */
+.lgx-acceso{display:grid;place-items:center;padding:40px 32px;
+  background:linear-gradient(170deg,#002E44 0%,#001D2B 100%)}
+.lgx-caja{width:100%;max-width:340px}
+.lgx-caja h2{font-size:25px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.lgx-sub{font-size:13px;color:rgba(255,255,255,.66);margin:5px 0 22px}
+
+/* Los campos, en versión oscura */
+.lgx-caja .f label{color:rgba(255,255,255,.8)}
+.lgx-caja .fi{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);
+  color:#fff}
+.lgx-caja .fi::placeholder{color:rgba(255,255,255,.38)}
+.lgx-caja .fi:focus{background:rgba(255,255,255,.12);border-color:var(--secondary);
+  box-shadow:0 0 0 3px rgba(0,191,252,.18)}
+.lgx-caja .fi:-webkit-autofill{-webkit-text-fill-color:#fff;
+  -webkit-box-shadow:0 0 0 40px #0A3348 inset}
+
+.lgx-caja .b-lg{background:var(--secondary);border-color:var(--secondary);color:#00222F;
+  font-weight:800}
+.lgx-caja .b-lg:hover:not(:disabled){background:#2ACDFF;border-color:#2ACDFF}
+
+.lgx-pie{margin-top:18px;font-size:11px;color:rgba(255,255,255,.5);text-align:center}
+
+/* En pantalla angosta solo queda el acceso */
+@media (max-width:860px){
+  .lgx{grid-template-columns:1fr}
+  .lgx-marca{display:none}
+  .lgx-acceso{min-height:100vh}
+}
+
+
+/* ── Cambio de contraseña sobre fondo oscuro ── */
+.lgx-caja .cc-regla{color:rgba(255,255,255,.62);background:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.14)}
+.lgx-caja .cc-regla.ok{color:#8EEFE6;background:rgba(0,191,252,.14);
+  border-color:rgba(0,191,252,.35)}
+.lgx-caja .cc-fuerza{background:rgba(255,255,255,.12)}
+.lgx-caja .cc-nivel{color:rgba(255,255,255,.6)}
+.lgx-caja .cc-ojo{color:rgba(255,255,255,.5)}
+.lgx-caja .cc-ojo:hover{color:var(--secondary)}
