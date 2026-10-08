@@ -33,6 +33,7 @@ const supervision = (() => {
     llenarFiltro();
     llenarReportes();
     refrescar();                       // primera consulta inmediata
+    arrancarDia();                     // y los números del día
     detener();
 
     /* Se pregunta cada tres segundos. No es tan inmediato como
@@ -97,6 +98,70 @@ const supervision = (() => {
   }
 
   /* ═══════════ INDICADORES ═══════════ */
+  /* ── Cómo va el día ──
+
+     Se consulta cada 30 segundos y no cada 3 como el estado de los
+     agentes. Son cuentas sobre la tabla de llamadas, que crece todos
+     los días: pedirlas tres veces por segundo cargaría la base sin
+     que nadie note la diferencia, porque estos números no cambian
+     tan rápido. */
+
+  let relojDia = null;
+
+  async function pintarDia() {
+    if (!$('kpiDia')) return;
+
+    let d;
+    try { d = await servicio.indicadoresDelDia(); }
+    catch { return; }
+
+    const h = d.hoy || {};
+    const ayer = d.ayer || {};
+
+    $('diaHora').textContent = 'Acumulado hasta las ' +
+      new Date().toTimeString().slice(0, 5);
+
+    /* La comparación con ayer a la misma hora es lo que convierte un
+       número suelto en información: 40 llamadas no dice nada; 40
+       cuando ayer iban 60, sí. */
+    const contra = (hoyV, ayerV) => {
+      if (!ayerV) return '';
+      const dif = Math.round(((hoyV - ayerV) / ayerV) * 100);
+      if (Math.abs(dif) < 3) return '<span class="vs igual">igual que ayer</span>';
+      return `<span class="vs ${dif > 0 ? 'sube' : 'baja'}">${
+        dif > 0 ? '▲' : '▼'} ${Math.abs(dif)}% vs ayer</span>`;
+    };
+
+    const reloj = (s) => {
+      const n = Number(s) || 0;
+      const m = Math.floor(n / 60);
+      return m ? `${m}m ${String(n % 60).padStart(2, '0')}s` : `${n}s`;
+    };
+
+    const tarjeta = (et, vl, sb, tono = '') => `
+      <div class="kpi ${tono}"><div class="et">${et}</div>
+        <div class="vl">${vl}</div><div class="sb">${sb}</div></div>`;
+
+    const tarjetas = [
+      tarjeta('Llamadas', h.llamadas ?? 0,
+              contra(h.llamadas || 0, ayer.llamadas || 0) || 'hechas hoy'),
+      tarjeta('Contactadas', h.contestadas ?? 0, 'llegaron a hablar', 'bien'),
+      tarjeta('Efectividad', (h.efectividad ?? 0) + '%', 'de las llamadas hechas',
+              (h.efectividad ?? 0) >= 30 ? 'bien' : 'alerta'),
+      tarjeta('Tiempo hablado', reloj(h.segundosHablados), 'en total'),
+      tarjeta('Promedio', reloj(h.promedio), 'por llamada contactada'),
+    ];
+
+    /* Solo si hay una base de marcación activa */
+    if (d.base) {
+      const quedan = d.base.pendientes;
+      tarjetas.push(tarjeta('Base pendiente', quedan,
+        `de ${d.base.total} contactos`, quedan ? '' : 'alerta'));
+    }
+
+    $('kpiDia').innerHTML = tarjetas.join('');
+  }
+
   function pintar() {
     const ag = filtro === 'Todas'
       ? estado.agentes
@@ -105,6 +170,16 @@ const supervision = (() => {
     pintarKpis(ag, estado.kpis);
     pintarAgentes(ag);
     pintarCampanas();
+  }
+
+  function arrancarDia() {
+    pintarDia();
+    clearInterval(relojDia);
+    relojDia = setInterval(() => {
+      const v = document.querySelector('.vista.on');
+      if (v && v.dataset.v === 'supervision') pintarDia();
+      else { clearInterval(relojDia); relojDia = null; }
+    }, 30000);
   }
 
   function pintarKpis(agentes, kpis) {

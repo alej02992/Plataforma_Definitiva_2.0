@@ -1,4 +1,5 @@
 
+
 /* ═══════════════════════════════════════════════════════════════════
    PANTALLA
    No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
@@ -147,9 +148,10 @@ function construirMenu(sesion) {
       `</button>`);
   });
   $('nav').innerHTML = html.join('');
-  /* El supervisor abre directamente en Seguimiento; el resto, en la
-     primera entrada disponible de su menú. */
-  const inicial = sesion.rol === 'supervisor' && sesion.permisos.includes('supervision')
+  /* Quien supervisa entra viendo su operación, no un teclado que no va
+     a usar. El agente sí abre en su escritorio, que es su herramienta
+     de trabajo. */
+  const inicial = sesion.permisos.includes('supervision')
     ? 'supervision'
     : ($('nav').querySelector('.nv')?.dataset.v || 'escritorio');
   irA(inicial);

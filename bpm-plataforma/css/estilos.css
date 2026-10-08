@@ -665,3 +665,18 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .rep-barra i{display:block;height:100%;background:var(--teal);border-radius:5px}
 .rep-num{flex:none;width:44px;text-align:right;font-size:12px;font-weight:700;color:var(--ink)}
 .rep-pct{flex:none;width:52px;text-align:right;font-size:11px;color:var(--ink-3)}
+
+/* ══════════ SEGUIMIENTO · CÓMO VA EL DÍA ══════════ */
+.dia-h{display:flex;align-items:baseline;gap:9px;margin:4px 0 8px}
+.dia-h h3{font-size:13px;font-weight:800;color:var(--ink);letter-spacing:-.2px}
+.dia-sub{font-size:11px;color:var(--ink-3)}
+.tarjetas.dia{margin-bottom:14px}
+.tarjetas.dia .kpi{border-left:3px solid var(--teal)}
+.tarjetas.dia .kpi.bien{border-left-color:var(--ok)}
+.tarjetas.dia .kpi.alerta{border-left-color:#E9A23B}
+
+/* Comparación con ayer */
+.vs{font-weight:700}
+.vs.sube{color:var(--ok)}
+.vs.baja{color:var(--danger)}
+.vs.igual{color:var(--ink-3)}

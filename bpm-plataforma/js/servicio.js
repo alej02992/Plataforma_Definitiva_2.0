@@ -405,6 +405,9 @@ const servicio = (() => {
 
   const respuestasBlaster = (id) => api('GET', `/blasters/${id}/respuestas`);
 
+  /** Cómo va el día: llamadas, efectividad y comparación con ayer. */
+  const indicadoresDelDia = () => api('GET', '/vivo/indicadores');
+
   /* ── Reportería ── */
 
   const comoTexto = (f) => new URLSearchParams(
@@ -787,13 +790,14 @@ const servicio = (() => {
     estadoVivo, formularios, guardarFormularios, formulariosDe,
     pendientes, encolarRespuesta, sincronizar,
     generarReporte, horarios, guardarHorarios,
+
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
-    reporteLlamadas, reporteTipificaciones, reporteSesiones, exportarReporte,
+    indicadoresDelDia, reporteLlamadas, reporteTipificaciones, reporteSesiones, exportarReporte,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,

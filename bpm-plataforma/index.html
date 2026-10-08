@@ -380,6 +380,18 @@
       <section class="vista" data-v="supervision">
         <!-- Aviso si el backend no pudo consultar la central -->
         <div id="avisoVivo" style="display:none;margin-bottom:12px"></div>
+        <!-- Cómo va el día. Es distinto del panel de agentes de abajo,
+             que dice qué pasa en este segundo. -->
+        <div class="dia-h">
+          <h3>Hoy</h3>
+          <span class="dia-sub" id="diaHora">—</span>
+        </div>
+        <div class="tarjetas dia" id="kpiDia"></div>
+
+        <div class="dia-h">
+          <h3>Ahora mismo</h3>
+          <span class="dia-sub">Estado de los agentes en este momento</span>
+        </div>
         <div class="tarjetas" id="kpis"></div>
 
         <div class="rej rej-2">
