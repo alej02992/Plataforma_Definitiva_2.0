@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PANTALLA
+   No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
+   ═══════════════════════════════════════════════════════════════════ */
+
 const ui = {
   sesion: null,          // datos del usuario que entregó el servicio
   llamadas: [],          // historial de la sesión
@@ -770,6 +775,10 @@ $('btnDisponible').addEventListener('click', () => {
   clearInterval(relojPausa); relojPausa = null;
   /* Al volver de pausa se vuelve a pedir contacto */
   if (typeof marcacion !== 'undefined') setTimeout(() => marcacion.pedirSiguiente(), 400);
+
+  /* Y se recarga el catálogo de tipificación: si el administrador lo
+     cambió durante el turno, el agente lo ve sin cerrar sesión. */
+  llenarCatalogo();
   $('estAg').classList.remove('vencido');
   ui.pausa = null; telefonia.pausa = null;
   document.querySelectorAll('.pz').forEach((x) => x.classList.remove('on'));
