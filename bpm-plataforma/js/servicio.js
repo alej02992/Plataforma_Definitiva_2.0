@@ -416,10 +416,26 @@ const servicio = (() => {
   const reporteTipificaciones = (f) => api('GET', '/reportes/tipificaciones?' + comoTexto(f));
   const reporteSesiones = (f) => api('GET', '/reportes/sesiones?' + comoTexto(f));
 
+  /** Los formularios que el supervisor puede consultar. */
+  const listarFormulariosReporte = () => api('GET', '/reportes/formularios');
+
+  /** Las respuestas de un formulario. Las columnas vienen con los
+      datos, porque cada formulario tiene sus propias preguntas. */
+  const reporteFormulario = (id, f) =>
+    api('GET', `/reportes/formularios/${id}?` + comoTexto(f));
+
   /** El archivo lo arma el servidor y llega como texto; la plataforma
       lo vuelve a convertir en archivo para descargarlo. */
-  const exportarReporte = (reporte, formato, filas, periodo) =>
-    api('POST', '/reportes/exportar', { reporte, formato, filas, periodo });
+  const exportarReporte = (reporte, formato, filas, periodo, columnas) =>
+    api('POST', '/reportes/exportar', { reporte, formato, filas, periodo, columnas });
+
+  /* ── Tipificador ── */
+
+  const leerTipificador = (campanaId) =>
+    api('GET', '/tipificador/' + (campanaId || 0));
+
+  const guardarTipificador = (campanaId, tipificaciones) =>
+    api('PUT', '/tipificador/' + (campanaId || 0), { tipificaciones });
 
   /* ── Seguridad ── */
 
@@ -797,7 +813,9 @@ const servicio = (() => {
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
-    indicadoresDelDia, reporteLlamadas, reporteTipificaciones, reporteSesiones, exportarReporte,
+    indicadoresDelDia, reporteLlamadas, reporteTipificaciones,
+    listarFormulariosReporte, reporteFormulario, reporteSesiones, exportarReporte,
+    leerTipificador, guardarTipificador,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,

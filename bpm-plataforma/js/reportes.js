@@ -23,6 +23,7 @@ const reportes = (() => {
 
   let tipo = 'llamadas';
   let filas = [];
+  let columnasVistas = [];
 
   /* Qué pide y qué muestra cada reporte */
   const REPORTES = {
@@ -86,6 +87,20 @@ const reportes = (() => {
         ['En pausa', r.enPausa, `${r.porcentajePausa ?? 0}% del tiempo`, 'alerta'],
       ],
     },
+    formularios: {
+      ayuda: 'Lo que respondieron los clientes. Cada formulario tiene sus propias ' +
+             'preguntas, así que primero elige cuál quieres ver.',
+      filtros: ['formulario'],
+      /* Las columnas no están escritas aquí: vienen del formulario
+         elegido, porque cada uno pregunta cosas distintas. */
+      pedir: (f) => servicio.reporteFormulario(f.formulario_id, f),
+      lista: (d) => d.respuestas,
+      columnas: null,
+      resumen: (r) => [
+        ['Respuestas', r.respuestas ?? 0, 'en el periodo'],
+        ['Preguntas', r.campos ?? 0, 'tiene el formulario'],
+      ],
+    },
   };
 
   const reloj = (s) => {
@@ -137,6 +152,9 @@ const reportes = (() => {
     $r('rpEstadoBox').style.display = def.filtros.includes('estado') ? '' : 'none';
     $r('rpNumeroBox').style.display = def.filtros.includes('numero') ? '' : 'none';
     $r('rpResultadoBox').style.display = def.filtros.includes('resultado') ? '' : 'none';
+    $r('rpFormBox').style.display = def.filtros.includes('formulario') ? '' : 'none';
+
+    if (def.filtros.includes('formulario')) llenarFormularios();
 
     $r('rpRepartoBox').style.display = 'none';
     $r('rpResumen').innerHTML = '';
@@ -149,6 +167,18 @@ const reportes = (() => {
     const t = e.target.closest('.tab');
     if (t) elegir(t.dataset.r);
   });
+
+  /** Los formularios que puede consultar, con cuántas respuestas
+      tiene cada uno: así se ve de entrada cuál tiene datos. */
+  async function llenarFormularios() {
+    let lista = [];
+    try { lista = await servicio.listarFormulariosReporte(); } catch { /* ninguno */ }
+
+    $r('rpFormulario').innerHTML = lista.length
+      ? lista.map((f) => `<option value="${seguro.texto(f.id)}">${seguro.texto(f.nombre)}${
+          f.campana ? ' · ' + seguro.texto(f.campana) : ''} (${seguro.texto(f.respuestas)})</option>`).join('')
+      : '<option value="">No hay formularios en tus campañas</option>';
+  }
 
   /* ═══════════ CONSULTAR ═══════════ */
 
@@ -164,6 +194,21 @@ const reportes = (() => {
       hasta: $r('rpHasta').value,
       extension: $r('rpAgente').value,
     };
+
+    /* La franja horaria solo se manda si no es el día completo: así la
+       consulta no lleva condiciones que no filtran nada. */
+    const hd = $r('rpHoraD').value, hh = $r('rpHoraH').value;
+    if (hd && hd !== '00:00') filtros.desdeHora = hd;
+    if (hh && hh !== '23:59') filtros.hastaHora = hh;
+
+    if (def.filtros.includes('formulario')) {
+      filtros.formulario_id = $r('rpFormulario').value;
+      if (!filtros.formulario_id) {
+        aviso('Elige primero un formulario.', 'av-a');
+        btn.disabled = false; btn.textContent = 'Consultar';
+        return;
+      }
+    }
     if (def.filtros.includes('estado')) filtros.estado = $r('rpEstado').value;
     if (def.filtros.includes('numero')) filtros.numero = $r('rpNumero').value.trim();
     if (def.filtros.includes('resultado')) filtros.resultado = $r('rpResultado').value.trim();
@@ -172,9 +217,13 @@ const reportes = (() => {
       const d = await def.pedir(filtros);
       filas = def.lista(d) || [];
 
+      /* El de formularios trae sus columnas; los demás las tienen
+         definidas aquí. */
+      columnasVistas = def.columnas || d.columnas || [];
+
       pintarResumen(def.resumen(d.resumen || {}));
-      pintarReparto(d.reparto);
-      pintarTabla(def.columnas);
+      pintarReparto(d.reparto, tipo === 'formularios');
+      pintarTabla(columnasVistas);
 
       $r('rpTag').className = 't ' + (filas.length ? 'g' : 'o');
       $r('rpTag').textContent = filas.length ? `${filas.length} registros` : 'Sin datos';
@@ -195,17 +244,32 @@ const reportes = (() => {
 
   /** El reparto por resultado, con barra. Es lo que de verdad se mira
       en el reporte de tipificación. */
-  function pintarReparto(reparto) {
+  /**
+   * El reparto de resultados. En tipificación es una sola lista; en
+   * formularios es una por cada pregunta de opciones, porque interesa
+   * saber cómo se repartieron las respuestas de cada una.
+   */
+  function pintarReparto(reparto, porPregunta = false) {
     if (!reparto?.length) { $r('rpRepartoBox').style.display = 'none'; return; }
 
     $r('rpRepartoBox').style.display = '';
-    $r('rpReparto').innerHTML = reparto.map((r) => `
+
+    const barras = (lista) => lista.map((x) => `
       <div class="rep-fila">
-        <span class="rep-nom">${seguro.texto(r.resultado)}</span>
-        <span class="rep-barra"><i style="width:${Math.max(2, r.porcentaje)}%"></i></span>
-        <span class="rep-num mono">${seguro.texto(r.cantidad)}</span>
-        <span class="rep-pct mono">${seguro.texto(r.porcentaje)}%</span>
+        <span class="rep-nom">${seguro.texto(x.resultado ?? x.valor)}</span>
+        <span class="rep-barra"><i style="width:${Math.max(2, x.porcentaje)}%"></i></span>
+        <span class="rep-num mono">${seguro.texto(x.cantidad)}</span>
+        <span class="rep-pct mono">${seguro.texto(x.porcentaje)}%</span>
       </div>`).join('');
+
+    $r('rpReparto').innerHTML = porPregunta
+      ? reparto.map((p) => `
+          <div style="margin-bottom:14px">
+            <div class="dia-h"><h3>${seguro.texto(p.etiqueta)}</h3>
+              <span class="dia-sub">${seguro.texto(p.total)} respuestas</span></div>
+            ${barras(p.opciones)}
+          </div>`).join('')
+      : barras(reparto);
   }
 
   function pintarTabla(columnas) {
@@ -248,7 +312,8 @@ const reportes = (() => {
 
       try {
         const periodo = `${$r('rpDesde').value} a ${$r('rpHasta').value}`;
-        const r = await servicio.exportarReporte(tipo, formato, filas, periodo);
+        const r = await servicio.exportarReporte(tipo, formato, filas, periodo,
+          tipo === 'formularios' ? columnasVistas : null);
 
         /* El servidor manda el archivo como texto; aquí se vuelve a
            convertir en archivo para descargarlo. */

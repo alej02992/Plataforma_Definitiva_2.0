@@ -493,6 +493,7 @@
             <button class="tab on" data-r="llamadas">Llamadas</button>
             <button class="tab" data-r="tipificaciones">Tipificación</button>
             <button class="tab" data-r="sesiones">Inicio de sesión</button>
+            <button class="tab" data-r="formularios">Formularios</button>
           </div>
           <p class="c-sub" id="rpAyuda">Cada llamada gestionada en la plataforma: quién la
             hizo, a qué número, cuánto duró y cómo se tipificó.</p>
@@ -500,6 +501,21 @@
           <div class="r2">
             <div class="f"><label>Desde</label><input class="fi" type="date" id="rpDesde"></div>
             <div class="f"><label>Hasta</label><input class="fi" type="date" id="rpHasta"></div>
+          </div>
+
+          <div class="r2">
+            <div class="f"><label>Desde la hora</label>
+              <input class="fi" type="time" id="rpHoraD" value="00:00"></div>
+            <div class="f"><label>Hasta la hora</label>
+              <input class="fi" type="time" id="rpHoraH" value="23:59">
+              <div class="hint">Con varios días, la franja se aplica a cada uno.</div></div>
+          </div>
+
+          <!-- Cada formulario tiene sus propias preguntas, así que hay
+               que elegir cuál antes de consultar. -->
+          <div class="f" id="rpFormBox" style="display:none">
+            <label>Formulario</label>
+            <select class="fi" id="rpFormulario"></select>
           </div>
 
           <div class="r2">
@@ -558,7 +574,45 @@
 
       <!-- ══════ DISEÑADOR DE FORMULARIOS ══════ -->
       <section class="vista" data-v="disenador">
-        <div class="rej rej-2">
+        <!-- El diseñador reúne lo que el administrador define para que
+             el agente lo use: qué datos captura y cómo cierra la
+             gestión. Son dos caras de lo mismo. -->
+        <div class="tabs" id="disTabs">
+          <button class="tab on" data-d="formularios">Formularios</button>
+          <button class="tab" data-d="tipificador">Tipificaciones</button>
+        </div>
+
+        <!-- ── Tipificador ── -->
+        <div id="panelTipificador" style="display:none">
+          <div class="c">
+            <div class="c-h"><h2>Tipificaciones por campaña</h2>
+              <span class="t o" id="tpTag">—</span></div>
+            <p class="c-sub">Cómo cierra el agente cada gestión. Cada campaña tiene las
+              suyas: una de atención al ciudadano no se cierra igual que una de cobranza.</p>
+
+            <div class="f" style="max-width:360px"><label>Campaña</label>
+              <select class="fi" id="tpCampana"></select>
+              <div class="hint">Las generales se usan en las campañas que no tienen
+                las suyas propias.</div></div>
+
+            <div class="ctrls" style="margin-bottom:10px">
+              <button class="b b-gh b-sm" id="btnTpAgregar">Agregar tipificación</button>
+              <button class="b b-teal" id="btnTpGuardar">Guardar</button>
+            </div>
+
+            <div id="tpLista"></div>
+
+            <div class="aviso av-a" style="margin-top:12px">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              <div>La <b>acción</b> es lo que hace el sistema al elegir esa tipificación:
+                cerrar la gestión, reintentar más tarde, usar el segundo teléfono, agendar
+                o sacar el número de todas las campañas. Así el agente tipifica una vez y
+                no tiene que pulsar nada más.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rej rej-2" id="panelFormularios">
           <div class="c">
             <div class="c-h"><h2>Formularios</h2>
               <button class="b b-teal b-sm" id="btnFormNuevo">Crear</button></div>
@@ -1322,6 +1376,16 @@
 
 <audio id="audioRemoto" autoplay style="display:none"></audio>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     El orden importa:
+       1. config.js       ← el único archivo que hay que editar
+       2. sip.js          la librería SIP
+       3. servicio.js     usuarios, credenciales y datos
+       4. telefonia.js    el módulo de llamadas
+       5. supervision.js  el panel del supervisor
+       6. formularios.js  captura y diseñador
+       7. pantalla.js     la interfaz que lo une todo
+     ═══════════════════════════════════════════════════════════════ -->
 <script src="js/config.js"></script>
 <script src="lib/sip.js"></script>
 <script src="js/seguro.js"></script>
@@ -1333,6 +1397,7 @@
 <script src="js/sms.js"></script>
 <script src="js/marcacion.js"></script>
 <script src="js/seguridad.js"></script>
+<script src="js/tipificador.js"></script>
 <script src="js/formularios.js"></script>
 <script src="js/administracion.js"></script>
 <script src="js/reportes.js"></script>
