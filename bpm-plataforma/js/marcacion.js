@@ -332,12 +332,14 @@ const marcacion = (() => {
       ? `<div class="hint" style="margin-bottom:8px">El agente verá ${extra.join(' · ')}.</div>` : '';
 
     $m('baRevision').innerHTML = resumen + nota + `<div style="overflow-x:auto"><table class="tb">
-      <tr><th>Línea</th><th>Teléfono</th><th>Segundo</th><th>Nombre</th><th>Revisión</th></tr>
+      <tr><th>Línea</th><th>Teléfono</th><th>Segundo</th><th>Nombre</th>
+          <th>Correo</th><th>Revisión</th></tr>
       ${r.filas.map((f) => `<tr${f.errores.length ? ' style="background:var(--danger-l)"' : ''}>
         <td class="mono">${seguro.texto(f.linea)}</td>
         <td class="mono">${seguro.celda(f.telefono_1)}</td>
         <td class="mono">${seguro.celda(f.telefono_2)}</td>
         <td>${seguro.celda(f.nombre)}</td>
+        <td>${seguro.celda(f.correo)}</td>
         <td>${f.errores.length
           ? `<span class="mas-error">${seguro.texto(f.errores.join('. '))}</span>`
           : '<span class="mas-ok">Listo</span>'}</td>
@@ -370,9 +372,9 @@ const marcacion = (() => {
        Cualquier columna que agregues aparecerá también en su pantalla. */
     const ejemplo = [
       'sep=;',
-      'telefono_1;telefono_2;nombre;documento;observaciones',
-      '3102879726;3151112233;Juan Pérez;79123456;Cliente antiguo',
-      '3004432187;;María Gómez;52984112;',
+      'telefono_1;telefono_2;nombre;documento;correo;observaciones',
+      '3102879726;3151112233;Juan Pérez;79123456;juan.perez@correo.com;Cliente antiguo',
+      '3004432187;;María Gómez;52984112;;',
     ].join('\r\n');
 
     const a = document.createElement('a');

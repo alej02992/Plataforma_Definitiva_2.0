@@ -1,10 +1,3 @@
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   PANTALLA
-   No conoce SIP.js. Solo reacciona a los eventos de `telefonia`.
-   ═══════════════════════════════════════════════════════════════════ */
-
 const ui = {
   sesion: null,          // datos del usuario que entregó el servicio
   llamadas: [],          // historial de la sesión
@@ -1451,24 +1444,40 @@ async function pintarCola() {
   }
 
   $('colaN').textContent = r.total;
+
+  /* La lista puede venir de las colas de Asterisk o de la base de
+     marcación activa. Conviene decir de dónde, para que el agente
+     entienda qué está viendo. */
+  const deBase = r.origen === 'base';
   /* Con gente esperando se pone en ámbar: es información que el agente
      debería notar sin ir a buscarla. */
   $('colaN').className = 't ' + (r.total ? 'a' : 'o');
 
   if (!r.total) {
-    $('listaCola').innerHTML = '<div class="vacio">No hay nadie esperando en tus colas.</div>';
+    $('listaCola').innerHTML = `<div class="vacio">${
+      deBase ? 'No quedan contactos por llamar en la base.'
+             : 'No hay nadie esperando en tus colas.'}</div>`;
     return;
   }
 
-  $('listaCola').innerHTML = r.llamadas.map((c) => `
+  const encabezado = deBase
+    ? `<div class="hint" style="margin-bottom:6px">Próximos de la base
+        <b>${seguro.texto(r.base || '')}</b> · quedan ${seguro.texto(r.total)}</div>`
+    : '';
+
+  $('listaCola').innerHTML = encabezado + r.llamadas.map((c) => `
     <div class="cola-fila">
       <span class="cola-pos">${seguro.texto(c.posicion)}</span>
       <div class="cola-dato">
         <b class="mono">${seguro.texto(c.numero)}</b>
         ${c.nombre ? `<span>${seguro.texto(c.nombre)}</span>` : ''}
-        <span class="cola-cola">${seguro.texto(c.cola)}</span>
+        <span class="cola-cola">${seguro.texto(
+          deBase
+            ? (c.agendado ? 'Agendado' : c.intentos ? `Intento ${c.intentos + 1}` : 'Por llamar')
+            : c.cola)}</span>
       </div>
-      <span class="cola-espera mono">${seguro.texto(esperaTexto(c.esperando))}</span>
+      ${deBase ? '' :
+        `<span class="cola-espera mono">${seguro.texto(esperaTexto(c.esperando))}</span>`}
     </div>`).join('');
 }
 
