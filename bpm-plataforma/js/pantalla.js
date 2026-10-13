@@ -834,7 +834,22 @@ document.addEventListener('keydown', (e) => {
 
 /* ═══════════ BOTONES DE LLAMADA ═══════════ */
 $('btnCall').addEventListener('click', () => telefonia.llamar($('dest').value));
+/* Contestar da señal de que está trabajando: sin eso, si tarda un
+   segundo el agente cree que no funcionó y vuelve a pulsar. */
 $('btnAnswer').addEventListener('click', () => telefonia.contestar());
+
+telefonia.on('contestando', (enCurso) => {
+  const b = $('btnAnswer');
+  if (!b) return;
+  b.disabled = enCurso;
+  b.textContent = enCurso ? 'Contestando…' : 'Contestar';
+});
+
+/* Y si falla, se dice en pantalla. Antes el error solo quedaba en la
+   traza y el agente no se enteraba de nada. */
+telefonia.on('error', (d) => {
+  if (d?.donde === 'contestar') aviso(d.motivo, 'av-a');
+});
 $('btnReject').addEventListener('click', () => telefonia.rechazar());
 $('btnHangup').addEventListener('click', () => telefonia.colgar());
 $('btnMute').addEventListener('click', () => telefonia.silenciar(!telefonia.silenciado));
