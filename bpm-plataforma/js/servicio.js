@@ -465,6 +465,9 @@ const servicio = (() => {
   const seguimientoBase = (id, estado) =>
     api('GET', `/bases/${id}/contactos` + (estado ? '?estado=' + encodeURIComponent(estado) : ''));
 
+  /** Cuelga los canales de una extensión trancada. */
+  const liberarAgente = (extension) => api('POST', `/ami/liberar/${extension}`);
+
   /** Entra a oír una llamada en curso. El servidor comprueba que el
       agente sea de una campaña del supervisor y lo deja registrado. */
   const escuchar = (extension, modo) => api('POST', '/escucha', { extension, modo });
@@ -819,7 +822,8 @@ const servicio = (() => {
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
     revisarContactos, cargarContactos, seguimientoBase,
-    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, llamadasEnCola, escuchar,
+    siguienteContacto, resultadoContacto, soltarContacto, estadoMotor, llamadasEnCola,
+    liberarAgente, escuchar,
     listarSms, leerSms, crearSms, guardarSms, eliminarSms,
     revisarDestinosSms, cargarDestinosSms, listarDestinosSms, cambiarEstadoSms, enviarSms,
     listarBlasters, leerBlaster, crearBlaster, guardarBlaster, eliminarBlaster,

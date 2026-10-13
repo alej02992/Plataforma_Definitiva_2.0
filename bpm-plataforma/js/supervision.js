@@ -238,7 +238,7 @@ const supervision = (() => {
        omiten en lugar de mostrarlas vacías. */
     $('tablaAgentes').innerHTML = `<table class="tb">
       <tr><th>Ext.</th><th>Agente</th><th>Campaña</th><th>Estado</th>
-          <th>Tiempo</th><th>Atendiendo</th></tr>
+          <th>Tiempo</th><th>Atendiendo</th><th></th></tr>
       ${agentes.map((a) => `<tr>
         <td class="mono">${seguro.celda(a.extension)}</td>
         <td><b>${seguro.texto(a.nombre)}</b></td>
@@ -246,6 +246,12 @@ const supervision = (() => {
         <td><span class="t ${color(a.estado)}"><span class="d"></span>${seguro.texto(a.estado)}</span></td>
         <td class="mono">${reloj(a.desde)}</td>
         <td class="mono">${seguro.celda(a.numero)}</td>
+        <td style="text-align:right;white-space:nowrap">${
+          a.estado === 'En llamada' && a.extension
+            ? `<button class="b b-gh b-sm" data-liberar="${seguro.texto(a.extension)}"
+                       data-nombre="${seguro.texto(a.nombre)}"
+                       title="Colgar sus canales si quedó trancado">Liberar</button>`
+            : ''}</td>
       </tr>`).join('')}</table>`;
   }
 
@@ -304,6 +310,31 @@ const supervision = (() => {
       campanas.map((c) => `<option>${seguro.texto(c.nombre)}</option>`).join('');
   }
 
+
+  /* ── Liberar un agente trancado ──
+     Si la central cree que sigue en una llamada que ya terminó, el
+     agente deja de recibir y no hay forma de saberlo desde la pantalla.
+     Esto cuelga SOLO sus canales. */
+  $('tablaAgentes').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-liberar]');
+    if (!b) return;
+
+    if (!confirm(`¿Liberar a ${b.dataset.nombre}?\n\n` +
+                 'Se cuelgan sus llamadas en curso. Úsalo solo si quedó trancado: ' +
+                 'si está hablando de verdad, se le corta la llamada.')) return;
+
+    b.disabled = true;
+    try {
+      const r = await servicio.liberarAgente(b.dataset.liberar);
+      aviso(r.colgados
+        ? `${r.agente} liberado. Se colgaron ${r.colgados} canal(es).`
+        : `${r.agente} no tenía ningún canal abierto.`, 'av-b');
+      refrescar();
+    } catch (err) {
+      aviso(err.message, 'av-a');
+      b.disabled = false;
+    }
+  });
 
   function fijarFiltro(v) { filtro = v; pintar(); }
 
