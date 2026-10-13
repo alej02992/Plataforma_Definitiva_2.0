@@ -50,26 +50,6 @@ const servicio = (() => {
      ═════════════════════════════════════════════════════════════════ */
 
   /* ═════════════════════════════════════════════════════════════════
-     ESTADO EN VIVO (simulado)
-     En producción llega por WebSocket desde el backend, que a su vez
-     lo recibe del AMI de Asterisk.
-     ═════════════════════════════════════════════════════════════════ */
-  const ESTADOS_AGENTE = ['Disponible', 'En llamada', 'Cierre', 'Baño',
-                          'Almuerzo', 'Break', 'Retroalimentación'];
-
-  /* El panel de supervisión se alimenta de los eventos que emite la
-     central. Mientras ese módulo no exista, no se inventan agentes ni
-     colas: el panel se muestra vacío y lo dice. */
-  const vivo = { agentes: [], colas: [] };
-
-  /** Avanza la simulación un segundo. pantalla.js la llama con un intervalo. */
-
-  const estadoVivo = () => ({
-    agentes: vivo.agentes.map((a) => ({ ...a })),
-    colas: vivo.colas.map((c) => ({ ...c })),
-  });
-
-  /* ═════════════════════════════════════════════════════════════════
      FORMULARIOS · tablas `formulario` y `formulario_campo`
      El administrador y el supervisor los crean; el agente los llena.
      ═════════════════════════════════════════════════════════════════ */
@@ -92,14 +72,8 @@ const servicio = (() => {
     return [];
   }
 
-  function guardarFormularios(lista) {
-    try { localStorage.setItem(CLAVE_FORMS, JSON.stringify(lista)); } catch { /* nada */ }
-  }
 
   /** Formularios activos de una campaña. Es lo que ve el agente. */
-  function formulariosDe(campana) {
-    return formularios().filter((f) => f.activo && (f.campana === campana || f.campana === 'Todas'));
-  }
 
   /* ═════════════════════════════════════════════════════════════════
      RESPUESTAS SIN CONEXIÓN
@@ -118,17 +92,6 @@ const servicio = (() => {
   }
 
   /** Encola una respuesta. Se guarda SIEMPRE antes de intentar enviarla. */
-  function encolarRespuesta(resp) {
-    const lista = pendientes();
-    lista.push({
-      ...resp,
-      id: 'r' + Date.now() + Math.floor(Math.random() * 1000),
-      creado: new Date().toISOString(),
-      intentos: 0,
-    });
-    guardarPendientes(lista);
-    return lista.length;
-  }
 
   /**
    * Intenta enviar lo pendiente.
@@ -147,46 +110,6 @@ const servicio = (() => {
     }
     guardarPendientes([]);
     return { enviadas: lista.length, quedan: 0 };
-  }
-
-  /* ═════════════════════════════════════════════════════════════════
-     REPORTES · en producción salen de consultas sobre llamada/interaccion
-     ═════════════════════════════════════════════════════════════════ */
-  const TIPOS_REPORTE = [
-    { id: 'agentes',  nombre: 'Actividad por agente',
-      desc: 'Estado actual, llamadas atendidas y tiempo medio de operación.' },
-    { id: 'campanas', nombre: 'Resumen por campaña',
-      desc: 'Atendidas, abandonadas y nivel de servicio.' },
-    { id: 'llamadas', nombre: 'Detalle de llamadas',
-      desc: 'Una fila por llamada de esta sesión, con su tipificación.' },
-    { id: 'pausas',   nombre: 'Pausas del turno',
-      desc: 'Cuánto tiempo estuvo cada agente en cada pausa.' },
-  ];
-
-  /** Devuelve { columnas, filas } listo para pintar o descargar en CSV. */
-  function generarReporte(tipo) {
-    const v = estadoVivo();
-
-    if (tipo === 'agentes') {
-      return {
-        columnas: ['Extensión', 'Agente', 'Campaña', 'Estado', 'Llamadas', 'TMO (s)'],
-        filas: v.agentes.map((a) => [a.ext, a.nombre, a.campana, a.estado, a.llamadas, a.tmo]),
-      };
-    }
-    if (tipo === 'campanas') {
-      return {
-        columnas: ['Campaña', 'Tipo', 'Activa', 'En espera', 'Atendidas', 'Abandonadas', 'Nivel (%)'],
-        /* Este reporte se alimentaba de la lista local de campañas.
-           Ahora las campañas viven en la base; lo servirá el backend. */
-        filas: [],
-      };
-    }
-    if (tipo === 'pausas') {
-      /* Las pausas se registran en la tabla `pausa` de la base. Este
-         reporte lo servirá el backend; antes inventaba los tiempos. */
-      return { columnas: ['Extensión', 'Agente', 'Pausa', 'Segundos', 'Minutos'], filas: [] };
-    }
-    return { columnas: [], filas: [] };   // 'llamadas' lo arma pantalla.js
   }
 
   /* ═════════════════════════════════════════════════════════════════
@@ -806,9 +729,9 @@ const servicio = (() => {
 
   return {
     autenticar, credencialSip, cerrar, hayPbxConfigurada,
-    estadoVivo, formularios, guardarFormularios, formulariosDe,
-    pendientes, encolarRespuesta, sincronizar,
-    generarReporte, horarios, guardarHorarios,
+    formularios,
+    pendientes, sincronizar,
+    horarios, guardarHorarios,
 
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
@@ -842,6 +765,5 @@ const servicio = (() => {
        que aún las consultan se van limpiando. */
     get campanas()    { return []; },
     get tiposCampo()  { return TIPOS_CAMPO.map((t) => ({ ...t })); },
-    get tiposReporte(){ return TIPOS_REPORTE.map((t) => ({ ...t })); },
   };
 })();

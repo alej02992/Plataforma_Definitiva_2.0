@@ -31,7 +31,6 @@ const supervision = (() => {
   async function iniciar() {
     await cargarCampanas();
     llenarFiltro();
-    llenarReportes();
     refrescar();                       // primera consulta inmediata
     arrancarDia();                     // y los números del día
     detener();
@@ -338,70 +337,16 @@ const supervision = (() => {
 
   function fijarFiltro(v) { filtro = v; pintar(); }
 
-  /* ═══════════ REPORTES ═══════════ */
-  function llenarReportes() {
-    $('listaReportes').innerHTML = servicio.tiposReporte.map((r) =>
-      `<button class="rep" data-rep="${r.id}"><b>${r.nombre}</b><span>${r.desc}</span></button>`).join('');
-  }
+  /* Los reportes viejos del supervisor se quitaron: devolvían tablas
+     vacías porque su fuente de datos local nunca se llenó. Lo que de
+     verdad sirve está en Reportería, con sus cuatro reportes y sus
+     descargas. Los elementos que quedan en la página están ocultos. */
 
-  /**
-   * Genera un reporte y lo pinta.
-   * `extra` permite inyectar el detalle de llamadas, que vive en pantalla.js.
-   */
-  function generar(tipo, extra) {
-    const meta = servicio.tiposReporte.find((r) => r.id === tipo);
-    const datos = tipo === 'llamadas' && extra ? extra : servicio.generarReporte(tipo);
-    ultimoReporte = { tipo, nombre: meta ? meta.nombre : tipo, ...datos };
-
-    $('repResultado').style.display = '';
-    $('repTitulo').textContent = ultimoReporte.nombre;
-    $('repSub').textContent =
-      `${datos.filas.length} fila(s) · generado ${new Date().toLocaleString('es-CO')}`;
-
-    $('repTabla').innerHTML = !datos.filas.length
-      ? '<div class="vacio">Este reporte no tiene datos todavía.</div>'
-      : `<table class="tb">
-          <tr>${datos.columnas.map((c) => `<th>${c}</th>`).join('')}</tr>
-          ${datos.filas.slice(0, 100).map((f) =>
-            `<tr>${f.map((v) => `<td class="mono">${v}</td>`).join('')}</tr>`).join('')}
-        </table>` +
-        (datos.filas.length > 100
-          ? `<p class="hint" style="margin-top:8px">Se muestran las primeras 100 filas.
-             El CSV trae las ${datos.filas.length}.</p>` : '');
-
-    return ultimoReporte;
-  }
-
-  /** Descarga el último reporte en CSV, legible por Excel. */
-  function descargarCsv() {
-    if (!ultimoReporte || !ultimoReporte.filas.length) return false;
-
-    const escapar = (v) => {
-      const s = String(v ?? '');
-      return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
-    // Punto y coma: es el separador que Excel espera en configuración es-CO
-    const lineas = [ultimoReporte.columnas.map(escapar).join(';')]
-      .concat(ultimoReporte.filas.map((f) => f.map(escapar).join(';')));
-
-    // BOM para que Excel respete las tildes
-    const blob = new Blob(['\uFEFF' + lineas.join('\r\n')],
-      { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `bpm-${ultimoReporte.tipo}-` +
-      new Date().toISOString().slice(0, 16).replace(/[:T]/g, '') + '.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    return true;
-  }
-
-  /* ═══════════ UTILIDAD ═══════════ */
+  /** Segundos a mm:ss, para los tiempos de la tabla de agentes. */
   const reloj = (seg) => {
     const s = Math.max(0, Math.floor(seg || 0));
     return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
   };
 
-  return { iniciar, detener, pintar, fijarFiltro, alternarHorario,
-           generar, descargarCsv, reloj };
+  return { iniciar, detener, pintar, fijarFiltro, alternarHorario, reloj };
 })();

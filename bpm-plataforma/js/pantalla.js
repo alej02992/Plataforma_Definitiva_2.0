@@ -885,11 +885,31 @@ $('trTabs').addEventListener('click', (e) => {
 });
 
 /* Compañeros conectados, con su estado, para transferirles la llamada.
-   No se ofrece a quien esté en llamada o en pausa. */
-function pintarAgentesTransferencia() {
+   No se ofrece a quien esté en llamada o en pausa.
+
+   La lista sale del panel en vivo del servidor, que a su vez la toma de
+   la central. Antes salía de una lista local que nunca se llenaba: la
+   pantalla siempre decía que no había nadie conectado, aunque hubiera
+   diez agentes. */
+/* La última lista consultada. Se guarda para no volver a pedirla cuando
+   el agente escribe una extensión o elige a quién transferir. */
+let companeros = [];
+
+async function pintarAgentesTransferencia() {
+  if (!$('trAgentes')) return;
+
   const yo = ui.sesion?.usuario;
-  const vivos = servicio.estadoVivo().agentes
-    .filter((a) => a.ext && a.usuario !== yo);
+  let vivos = [];
+
+  try {
+    const v = await servicio.estadoEnVivo();
+    vivos = (v.agentes || []).filter((a) => a.extension && a.usuario !== yo);
+    companeros = vivos;
+  } catch {
+    $('trAgentes').innerHTML =
+      '<div class="vacio">No se pudo consultar quién está conectado.</div>';
+    return;
+  }
 
   if (!vivos.length) {
     $('trAgentes').innerHTML = '<div class="vacio">No hay compañeros conectados.</div>';
@@ -897,11 +917,16 @@ function pintarAgentesTransferencia() {
   }
 
   const color = (e) => e === 'Disponible' ? 'g' : e === 'En llamada' ? 'b' : 'a';
+
   $('trAgentes').innerHTML = vivos.map((a) => {
+    /* Solo se puede transferir a quien esté libre: pasarle una llamada
+       a alguien que ya está hablando no serviría de nada. */
     const libre = a.estado === 'Disponible';
-    return `<button class="ag-tr ${trAgenteSel === a.ext ? 'sel' : ''}"
-              data-ag="${seguro.texto(a.ext)}" ${libre ? '' : 'disabled'}>
-        <div class="bd"><b>${seguro.texto(a.nombre)}</b><span>ext. ${seguro.texto(a.ext)} · ${seguro.texto(a.campana)}</span></div>
+    return `<button class="ag-tr ${trAgenteSel === a.extension ? 'sel' : ''}"
+              data-ag="${seguro.texto(a.extension)}" ${libre ? '' : 'disabled'}>
+        <div class="bd"><b>${seguro.texto(a.nombre)}</b>
+          <span>ext. ${seguro.texto(a.extension)}${
+            a.campana ? ' · ' + seguro.texto(a.campana) : ''}</span></div>
         <span class="t ${color(a.estado)}">${seguro.texto(a.estado)}</span>
       </button>`;
   }).join('');
@@ -914,18 +939,39 @@ $('trAgentes').addEventListener('click', (e) => {
   pintarAgentesTransferencia();
 });
 
-function llenarCampanasTransferencia() {
-  if ($('trCampana').options.length) return;
-  $('trCampana').innerHTML = servicio.campanas
-    .map((c) => `<option value="${seguro.texto(c.cola)}">${seguro.texto(c.nombre)} — cola ${seguro.texto(c.cola)}</option>`).join('');
+/* Las campañas a las que se puede devolver la llamada. Salen del
+   servidor: antes venían de una lista local que quedó vacía, así que el
+   desplegable no mostraba ninguna. */
+async function llenarCampanasTransferencia() {
+  if (!$('trCampana') || $('trCampana').options.length) return;
+
+  let lista = [];
+  try { lista = await servicio.listarCampanas(); } catch { /* queda vacío */ }
+
+  /* La columna de la cola se llama `cola_asterisk`; se acepta también
+     `cola` por si alguna respuesta vieja la trae así. */
+  const conCola = lista.filter((c) => c.cola_asterisk || c.cola);
+
+  $('trCampana').innerHTML = conCola.length
+    ? conCola.map((c) => {
+        const cola = c.cola_asterisk || c.cola;
+        return `<option value="${seguro.texto(cola)}">${seguro.texto(c.nombre)} — cola ${
+          seguro.texto(cola)}</option>`;
+      }).join('')
+    : '<option value="">No hay campañas con cola configurada</option>';
 }
 
 /* Sugerencia de extensión mientras se escribe */
 $('trExt').addEventListener('input', () => {
   const v = $('trExt').value.trim();
-  const u = servicio.usuarios.find((x) => x.extension === v);
-  $('trExtHint').textContent = u ? u.nombre + ' · ' + u.campana
-    : (v ? 'Extensión no encontrada en el directorio' : '');
+  /* Se busca entre los compañeros conectados: es la única lista que un
+     agente puede consultar, y además es la que importa, porque a quien
+     no está conectado no tiene sentido transferirle. */
+  const u = companeros.find((x) => String(x.extension) === v);
+
+  $('trExtHint').textContent = u
+    ? `${u.nombre}${u.campana ? ' · ' + u.campana : ''} · ${u.estado}`
+    : (v ? 'Esa extensión no está conectada' : '');
 });
 
 /* Validación de números externos colombianos.
@@ -952,7 +998,7 @@ $('trExterno').addEventListener('input', () => {
 function destinoTransferencia() {
   if (trTipo === 'agente') {
     if (!trAgenteSel) { aviso('Selecciona un compañero disponible.', 'av-a'); return null; }
-    const a = servicio.usuarios.find((x) => x.extension === trAgenteSel);
+    const a = companeros.find((x) => String(x.extension) === trAgenteSel);
     return { destino: trAgenteSel, etiqueta: a ? a.nombre : 'extensión ' + trAgenteSel };
   }
 
@@ -965,7 +1011,7 @@ function destinoTransferencia() {
   if (trTipo === 'campana') {
     const cola = $('trCampana').value;
     if (!cola) { aviso('Selecciona una campaña.', 'av-a'); return null; }
-    const c = servicio.campanas.find((x) => x.cola === cola);
+    const c = { nombre: $('trCampana').selectedOptions[0]?.textContent || cola, cola };
     if (c && !c.abierta) {
       aviso(`La campaña ${c.nombre} está cerrada. La llamada quedaría sin atender.`, 'av-a');
       return null;
@@ -1415,14 +1461,6 @@ $('tablaCampanas').addEventListener('click', (e) => {
   const h = supervision.alternarHorario(b.dataset.hor);
   if (h) aviso(`${h.campana}: campaña ${h.abierto ? 'abierta' : 'cerrada'}.`, 'av-b');
 });
-
-$('listaReportes').addEventListener('click', (e) => {
-  const b = e.target.closest('.rep');
-  if (!b) return;
-  supervision.generar(b.dataset.rep);
-});
-
-$('btnDescargarCsv').addEventListener('click', () => supervision.descargarCsv());
 
 /* ═══════════ LLAMADAS EN COLA ═══════════
 
