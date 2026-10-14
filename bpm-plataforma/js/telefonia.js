@@ -346,11 +346,26 @@ const telefonia = (() => {
     if (!est.session) return;
     if (est.sinTelefonia) { est.inicio = Date.now(); cambiar('activa'); return; }
 
+    /* Solo se contesta una llamada que está timbrando.
+
+       Hay tres caminos que llaman aquí: el botón, la tecla rápida y la
+       casilla de contestar automáticamente. Si dos coinciden —la
+       casilla contesta sola y el agente además pulsa— el segundo
+       encuentra la llamada ya establecida y la central responde
+       "Invalid session state", que es lo que se veía en pantalla. */
+    if (est.session.state !== SIP.SessionState.Initial) {
+      traza(`Contestar ignorado: la llamada ya está ${est.session.state}`, 'info');
+      return;
+    }
+
     try {
       await est.session.accept({ sessionDescriptionHandlerOptions: medios() });
     } catch (e) {
+      /* El aviso de error viaja como TEXTO, como el resto de este
+         archivo. Mandarlo como objeto hacía que en pantalla apareciera
+         "[object Object]" en lugar del motivo. */
       traza('Error al contestar: ' + e.message, 'err');
-      emitir('error', { donde: 'contestar', motivo: e.message });
+      emitir('error', 'No se pudo contestar: ' + (e.message || 'error desconocido'));
     }
   }
 
