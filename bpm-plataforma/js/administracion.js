@@ -1046,7 +1046,5 @@ const administracion = (() => {
   return {
     abrirCampanas, abrirGrabaciones, abrirEscucha,
     abrirAdmCampanas, abrirUsuarios, abrirModulos,
-    get campanas() { return campanas.map((c) => ({ ...c })); },
-    get modulos() { return MODULOS.map((m) => ({ ...m })); },
   };
 })();

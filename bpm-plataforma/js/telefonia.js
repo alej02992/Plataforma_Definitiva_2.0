@@ -335,92 +335,25 @@ const telefonia = (() => {
   }
 
   /* ═══════════ ACCIONES ═══════════ */
-  /* Evita que dos pulsaciones seguidas intenten contestar a la vez:
-     la segunda encuentra la sesión a medio aceptar y falla. */
-  let contestando = false;
+  /* Contestar, en su forma simple: la que lleva meses funcionando.
 
-  /**
-   * Contesta la llamada entrante.
-   *
-   * Antes esto fallaba en silencio y el agente pulsaba el botón una y
-   * otra vez sin que pasara nada. Dos causas y sus arreglos:
-   *
-   *   1. El micrófono guardado ya no existe —cambió de equipo, se
-   *      desconectó la diadema— y el navegador rechaza la petición. Se
-   *      reintenta con el micrófono por defecto.
-   *   2. La sesión todavía no estaba lista para aceptarse. Se espera un
-   *      momento y se reintenta, en vez de pedirle al agente que
-   *      vuelva a pulsar.
-   *
-   * Y si aun así falla, se avisa en pantalla. Un fallo silencioso es lo
-   * que lleva a pulsar veinte veces.
-   */
+     Hubo una versión que reintentaba con otro micrófono y esperaba a
+     que la sesión estuviera lista. En pruebas funcionaba, pero en el
+     servidor la llamada se caía al contestar, así que se volvió a esta.
+     Si el problema de los muchos clics vuelve, hay que atacarlo por
+     otro lado y probándolo contra la central real. */
   async function contestar() {
-    if (!est.session || contestando) return;
+    if (!est.session) return;
     if (est.sinTelefonia) { est.inicio = Date.now(); cambiar('activa'); return; }
 
-    contestando = true;
-    emitir('contestando', true);
-
     try {
-      await aceptarConReintentos();
+      await est.session.accept({ sessionDescriptionHandlerOptions: medios() });
     } catch (e) {
-      const motivo = explicar(e);
-      traza('No se pudo contestar: ' + motivo, 'err');
-      emitir('error', { donde: 'contestar', motivo });
-    } finally {
-      contestando = false;
-      emitir('contestando', false);
+      traza('Error al contestar: ' + e.message, 'err');
+      emitir('error', { donde: 'contestar', motivo: e.message });
     }
   }
 
-  /** Intenta aceptar, con micrófono por defecto si el guardado falla. */
-  async function aceptarConReintentos() {
-    const s = est.session;
-
-    /* La sesión puede tardar un instante en quedar lista. Se espera
-       hasta dos segundos en vez de fallar de entrada. */
-    for (let i = 0; i < 20 && s.state === SIP.SessionState.Establishing; i++) {
-      await new Promise((r) => setTimeout(r, 100));
-    }
-
-    try {
-      await s.accept({ sessionDescriptionHandlerOptions: medios() });
-      return;
-    } catch (e) {
-      /* Si el problema es el micrófono elegido, se prueba con el que
-         tenga el equipo por defecto antes de darse por vencido. */
-      const esDelMicrofono = /OverconstrainedError|NotFoundError|NotReadableError|deviceId/i
-        .test(String(e.name || '') + String(e.message || ''));
-
-      if (!esDelMicrofono) throw e;
-
-      traza('El micrófono guardado no está disponible: se usa el del equipo', 'warn');
-      await s.accept({
-        sessionDescriptionHandlerOptions: {
-          constraints: { audio: true, video: false },
-        },
-      });
-    }
-  }
-
-  /** Traduce el error del navegador a algo que el agente entienda. */
-  function explicar(e) {
-    const txt = String(e?.name || '') + ' ' + String(e?.message || '');
-    if (/NotAllowedError|Permission/i.test(txt)) {
-      return 'El navegador tiene bloqueado el micrófono. Autorízalo en el candado de la barra de direcciones.';
-    }
-    if (/NotFoundError|OverconstrainedError/i.test(txt)) {
-      return 'No se encontró ningún micrófono conectado.';
-    }
-    if (/NotReadableError/i.test(txt)) {
-      return 'Otro programa está usando el micrófono. Ciérralo e intenta de nuevo.';
-    }
-    if (/Invalid session state|state/i.test(txt)) {
-      return 'La llamada ya no está disponible.';
-    }
-    return e?.message || 'Error desconocido';
-  }
 
   async function colgar() {
     const s = est.session;
