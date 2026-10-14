@@ -32,7 +32,7 @@ const telefonia = (() => {
     registrado: false, estado: 'reposo',   // reposo|timbrando|marcando|activa|espera|cierre
     numero: null, direccion: null, inicio: null,
     silenciado: false, enEspera: false, esperaRemota: false,
-    simulado: false, cfg: null, intentos: 0, statsId: null,
+    sinTelefonia: false, cfg: null, intentos: 0, statsId: null,
     campanas: [],        // las entrega el servicio al conectar
   };
 
@@ -95,18 +95,33 @@ const telefonia = (() => {
   /* ═══════════ CONEXIÓN ═══════════ */
   async function conectar(cfg) {
     est.cfg = cfg;
-    // Sin librería no hay telefonía real, diga lo que diga la
-    // configuración. Así la plataforma nunca queda inutilizable.
+    /* ── Sin telefonía ──
+       Hay dos casos legítimos en los que la plataforma funciona sin
+       teléfono: un supervisor o administrador que no tiene extensión
+       asignada, y un servidor donde falta la librería SIP.
+
+       En los dos, la persona debe poder entrar y usar todo lo demás.
+       Lo que no puede es llamar, y la pantalla lo dice. */
     const haySip = typeof SIP !== 'undefined' && typeof SIP.UserAgent === 'function';
-    est.simulado = !!cfg.simulado || !haySip;
-    if (!haySip && !cfg.simulado) {
-      traza('Falta lib/sip.js: las llamadas se simulan', 'warn');
+    est.sinTelefonia = !!cfg.sinTelefonia || !haySip;
+
+    if (!haySip) traza('Falta lib/sip.js: la plataforma queda sin telefonía', 'warn');
+
+    /* Sin una dirección de central válida no hay nada que conectar.
+       Intentarlo da un error del navegador —"Invalid WebSocket Server
+       URL"— que deja a la persona fuera de la plataforma sin explicarle
+       nada. Pasa, por ejemplo, con un administrador cuya extensión ya no
+       existe en la central. */
+    const wssValido = typeof cfg.wss === 'string' && /^wss?:\/\/.+/i.test(cfg.wss.trim());
+    if (!wssValido || !cfg.ext) {
+      est.sinTelefonia = true;
+      if (cfg.wss) traza(`Dirección de central no válida: ${cfg.wss}`, 'warn');
     }
 
-    if (est.simulado) {
-      est.registrado = true;
-      traza('Modo demostración: sin conexión real a la central', 'warn');
-      emitir('registro', { registrado: true, texto: 'Demostración' });
+    if (est.sinTelefonia) {
+      est.registrado = false;
+      traza('Sesión sin softphone: esta cuenta no puede hacer llamadas', 'warn');
+      emitir('registro', { registrado: false, texto: 'Sin telefonía' });
       cambiar('reposo');
       return;
     }
@@ -214,7 +229,6 @@ const telefonia = (() => {
     est.numero = destino;
     est.direccion = 'saliente';
 
-    if (est.simulado) return simular(destino);
 
     try {
       const inviter = new SIP.Inviter(est.ua, uri(destino), {
@@ -343,7 +357,7 @@ const telefonia = (() => {
    */
   async function contestar() {
     if (!est.session || contestando) return;
-    if (est.simulado) { est.inicio = Date.now(); cambiar('activa'); return; }
+    if (est.sinTelefonia) { est.inicio = Date.now(); cambiar('activa'); return; }
 
     contestando = true;
     emitir('contestando', true);
@@ -410,7 +424,7 @@ const telefonia = (() => {
 
   async function colgar() {
     const s = est.session;
-    if (est.simulado) {
+    if (est.sinTelefonia) {
       const hubo = est.estado === 'activa' || est.estado === 'espera';
       emitir('fin', { numero: est.numero, direccion: est.direccion, contestada: hubo,
                       segundos: hubo ? Math.round((Date.now() - est.inicio) / 1000) : 0,
@@ -427,7 +441,7 @@ const telefonia = (() => {
   }
 
   async function rechazar() {
-    if (est.simulado) { emitir('fin', { numero: est.numero, direccion: 'entrante',
+    if (est.sinTelefonia) { emitir('fin', { numero: est.numero, direccion: 'entrante',
       contestada: false, segundos: 0 }); return limpiar(false); }
     try { await est.session?.reject(); } catch (_) {}
     limpiar(false);
@@ -446,7 +460,7 @@ const telefonia = (() => {
 
   /* Espera: renegociación SIP. Asterisk pone la música. */
   async function espera(activo) {
-    if (est.simulado) {
+    if (est.sinTelefonia) {
       est.enEspera = activo; cambiar(activo ? 'espera' : 'activa');
       emitir('insignias', insignias()); return true;
     }
@@ -467,7 +481,7 @@ const telefonia = (() => {
   }
 
   function tono(digito) {
-    if (est.simulado) return true;
+    if (est.sinTelefonia) return true;
     const sdh = est.session?.sessionDescriptionHandler;
     if (sdh?.sendDtmf && sdh.sendDtmf(digito)) { traza('>>> DTMF ' + digito, 'tx'); return true; }
     traza('La central no aceptó el tono ' + digito, 'warn');
@@ -622,36 +636,6 @@ const telefonia = (() => {
   function detenerStats() { if (est.statsId) clearInterval(est.statsId); est.statsId = null; }
 
   /* ═══════════ MODO DEMOSTRACIÓN ═══════════ */
-  function simular(destino) {
-    cambiar('marcando');
-    setTimeout(() => {
-      if (est.estado !== 'marcando') return;
-      est.inicio = Date.now();
-      cambiar('activa');
-      emitir('paso6', false);
-    }, 2200);
-  }
-
-  /* Llamada entrante simulada. Es una ayuda de desarrollo: solo
-     funciona con el simulador activo, nunca contra una central real.
-     Si no hay contactos cargados, usa un número genérico en lugar de
-     fallar. */
-  function simularEntrante() {
-    if (!est.simulado) {
-      traza('La llamada simulada solo está disponible sin central real', 'warn');
-      return;
-    }
-    if (est.estado !== 'reposo' || est.pausa) return;
-
-    const c = (typeof DIRECTORIO !== 'undefined' && DIRECTORIO.length)
-      ? DIRECTORIO[Math.floor(Math.random() * DIRECTORIO.length)]
-      : null;
-
-    est.numero = c ? c.n : '3000000000';
-    est.direccion = 'entrante';
-    est.session = { simulada: true };
-    cambiar('timbrando');
-  }
 
   /* ═══════════ TRAZA DE SIP.js ═══════════ */
   function constructorTraza(nivel, categoria, etiqueta, contenido) {
@@ -674,13 +658,13 @@ const telefonia = (() => {
   return {
     on, conectar, desconectar, llamar, contestar, colgar, rechazar,
     silenciar, espera, tono, transferirCiega, transferirConsultada,
-    unir, cancelarConsulta, simularEntrante, parsearIce, traza,
+    unir, cancelarConsulta, parsearIce, traza,
     resolverDestino, normalizarExterno,
     set campanas(v) { est.campanas = v || []; },
     get estado() { return est.estado; },
     get numero() { return est.numero; },
     get registrado() { return est.registrado; },
-    get simulado() { return est.simulado; },
+    get sinTelefonia() { return est.sinTelefonia; },
     get inicio() { return est.inicio; },
     get enEspera() { return est.enEspera; },
     get silenciado() { return est.silenciado; },

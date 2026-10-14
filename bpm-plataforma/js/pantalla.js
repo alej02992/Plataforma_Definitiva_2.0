@@ -180,7 +180,13 @@ function irA(vista) {
     if (vista === 'seguridad' && typeof seguridad !== 'undefined') seguridad.abrir();
     if (vista === 'campanas') {
       administracion.abrirCampanas();
-      if (typeof gestionEstados !== 'undefined') gestionEstados.abrir();
+      if (typeof gestionEstados !== 'undefined') {
+        gestionEstados.abrir();
+        /* El panel de agentes pasados de tiempo se refresca solo
+           mientras esta vista esté abierta. Antes nadie encendía esa
+           vigilancia, así que la tarjeta nunca se actualizaba. */
+        gestionEstados.vigilar(true);
+      }
     }
     if (vista === 'grabaciones')  administracion.abrirGrabaciones();
     if (vista === 'escucha')      administracion.abrirEscucha();
@@ -1191,7 +1197,7 @@ $('btnDiag').addEventListener('click', async () => {
   }
 
   // 3. WebSocket
-  if (!cfg.wss || cfg.simulado) {
+  if (!cfg.wss || cfg.sinTelefonia) {
     marcarPaso('s3', 'warn', 'La central no está configurada en js/config.js');
   } else {
     await new Promise((res) => {
@@ -1307,7 +1313,7 @@ async function entrar() {
   const btn = $('btnEntrar');
   btn.disabled = true; btn.textContent = 'Iniciando sesión…';
 
-  let sesion, credencial, simulado = false;
+  let sesion, credencial, sinTelefonia = false;
 
   try {
     // 1. Autenticar contra la plataforma
@@ -1334,16 +1340,25 @@ async function entrar() {
       /* Supervisor y administrador no requieren softphone para su
          operación diaria. Registrarlos sin extensión fallaría y les
          impediría entrar. */
-      simulado = true;
+      sinTelefonia = true;
       log('Perfil sin extensión asignada: la sesión inicia sin softphone', 'info');
     } else {
       try {
         credencial = await servicio.credencialSip(sesion);
-        log(`Credencial SIP recibida para la extensión ${credencial.ext}`, 'ok');
+
+        /* Si el servidor no devuelve una dirección de central usable, la
+           sesión sigue sin telefonía en vez de fallar. Antes esto
+           terminaba en un error del navegador que dejaba a la persona
+           fuera de la plataforma. */
+        if (!credencial?.wss) {
+          sinTelefonia = true;
+          log('La central no entregó dirección: la sesión inicia sin telefonía', 'warn');
+        } else {
+          log(`Credencial SIP recibida para la extensión ${credencial.ext}`, 'ok');
+        }
       } catch (e) {
         if (e.message !== 'SIN_PBX') throw e;
-        // Sin central configurada: la sesión sigue, pero sin telefonía real
-        simulado = true;
+        sinTelefonia = true;
         log('Central no configurada: la sesión inicia sin telefonía', 'warn');
       }
     }
@@ -1358,7 +1373,7 @@ async function entrar() {
       clave: credencial?.clave,
       ice: credencial?.ice,
       volumen: 100,
-      simulado,
+      sinTelefonia,
     });
 
   } catch (e) {
@@ -1368,13 +1383,13 @@ async function entrar() {
   }
 
   // 4. Montar la aplicación
-  await montarAplicacion(sesion, simulado);
+  await montarAplicacion(sesion, sinTelefonia);
   btn.disabled = false; btn.textContent = 'Iniciar sesión';
 }
 
 /* Arma el escritorio y lo muestra. Se llama al iniciar sesión y
    también después del cambio obligatorio de contraseña. */
-async function montarAplicacion(sesion, simulado) {
+async function montarAplicacion(sesion, sinTelefonia) {
   try {
     ui.sesion = sesion;
     $('uNombre').textContent = sesion.nombre;
@@ -1416,7 +1431,7 @@ async function montarAplicacion(sesion, simulado) {
     }
   }
 
-  if (simulado) {
+  if (sinTelefonia) {
     log('Central no configurada: el softphone trabaja sin telefonía real', 'warn');
   }
 }
@@ -1439,15 +1454,10 @@ $('btnSalir').addEventListener('click', async () => {
   location.reload();
 });
 
-/* Con el simulador activo (js/config.js), Ctrl+Shift+L genera una
+/* (Atajo retirado: la plataforma ya no simula llamadas.)
+   Antes aquí vivía Ctrl+Shift+L, que generaba una
    llamada entrante. No aparece en la interfaz: es una ayuda de
    desarrollo, no una función del producto. */
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
-    e.preventDefault();
-    telefonia.simularEntrante();
-  }
-});
 
 /* ═══════════ SUPERVISIÓN: BOTONES ═══════════ */
 
@@ -1647,14 +1657,14 @@ async function cambiarClave() {
   if (!sesion) return;
 
   sesion.debeCambiarClave = false;
-  let credencial, simulado = false;
+  let credencial, sinTelefonia = false;
 
   /* Un usuario sin extensión no se registra en la central. Es el caso
      del supervisor y del administrador, que no requieren softphone
      para su operación diaria. Intentar registrarlos produciría un
      fallo que además impediría el ingreso. */
   if (!sesion.extension) {
-    simulado = true;
+    sinTelefonia = true;
     log('Este perfil no tiene extensión asignada: entra sin softphone', 'info');
   } else {
     try {
@@ -1663,7 +1673,7 @@ async function cambiarClave() {
       if (e.message !== 'SIN_PBX') {
         log('No se pudo obtener la credencial SIP: ' + e.message, 'warn');
       }
-      simulado = true;
+      sinTelefonia = true;
     }
   }
 
@@ -1673,13 +1683,13 @@ async function cambiarClave() {
       wss: credencial?.wss, dominio: credencial?.dominio,
       ext: credencial?.ext ?? sesion.extension,
       clave: credencial?.clave, ice: credencial?.ice,
-      volumen: 100, simulado,
+      volumen: 100, sinTelefonia,
     });
   } catch (e) {
     log('No se pudo conectar el softphone: ' + e.message, 'warn');
   }
 
-  await montarAplicacion(sesion, simulado);
+  await montarAplicacion(sesion, sinTelefonia);
   aviso('Contraseña actualizada. Bienvenido.', 'av-b');
 }
 
@@ -1773,13 +1783,11 @@ window.addEventListener('unhandledrejection', (ev) => {
 
   if (!haySip) {
     errorLogin('No se cargó <b>lib/sip.js</b>.<br><br>' +
-      'La plataforma funciona, pero las llamadas serán simuladas. ' +
+      'La plataforma funciona, pero sin telefonía: nadie podrá llamar. ' +
       'Verifica que el archivo exista dentro de la carpeta <b>lib</b> ' +
       'y pese <b>602.865 bytes</b>.');
   } else if (!CONFIG.pbx.wss || !CONFIG.pbx.dominio) {
     log('Librería cargada. Falta configurar la central en js/config.js', 'warn');
-  } else if (CONFIG.simulador) {
-    log('Librería y central listas, pero simulador está en true', 'warn');
   } else {
     log('Telefonía real activa · ' + CONFIG.pbx.wss, 'ok');
   }

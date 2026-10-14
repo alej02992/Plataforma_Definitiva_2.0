@@ -436,11 +436,16 @@ const administracion = (() => {
       </div>`).join('');
   }
 
+  /* Los formularios salen del servidor. Antes venían de una copia
+     guardada en el navegador, que ya no se llena: el desplegable
+     aparecía siempre vacío. */
   async function llenarFormularios() {
     let fs = [];
-    try { fs = servicio.formularios ? servicio.formularios() : []; } catch {}
+    try { fs = await servicio.listarFormularios(); } catch { /* queda vacío */ }
+
     $$('campForm').innerHTML = '<option value="">— Sin formulario —</option>' +
-      fs.map((f) => `<option value="${seguro.texto(f.id)}">${seguro.texto(f.nombre)}</option>`).join('');
+      fs.map((f) => `<option value="${seguro.texto(f.id)}">${
+        seguro.texto(f.nombre)}</option>`).join('');
   }
 
   $$('listaCampanas')?.addEventListener('click', (e) => {

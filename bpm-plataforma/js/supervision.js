@@ -290,15 +290,19 @@ const supervision = (() => {
   }
 
 
-  /** Abrir o cerrar el horario de una campaña. */
-  function alternarHorario(id) {
-    const lista = servicio.horarios();
-    const h = lista.find((x) => x.id === id);
-    if (!h) return null;
-    h.abierto = !h.abierto;
-    servicio.guardarHorarios(lista);
-    pintarCampanas();
-    return h;
+  /** Abrir o cerrar el horario de una campaña.
+
+      Lo decide el servidor: antes se guardaba en el navegador, así que
+      lo que abría un supervisor no lo veía otro y se perdía al limpiar
+      el navegador. */
+  async function alternarHorario(id) {
+    const r = await servicio.alternarHorario(id);
+    if (!r.ok) {
+      aviso(r.error || 'No se pudo cambiar el horario.', 'av-a');
+      return null;
+    }
+    await refrescar();
+    return r;
   }
 
   /* ═══════════ FILTRO POR CAMPAÑA ═══════════ */

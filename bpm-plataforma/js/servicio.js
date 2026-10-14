@@ -53,8 +53,6 @@ const servicio = (() => {
      FORMULARIOS · tablas `formulario` y `formulario_campo`
      El administrador y el supervisor los crean; el agente los llena.
      ═════════════════════════════════════════════════════════════════ */
-  const CLAVE_FORMS = 'bpm.formularios';
-
   const TIPOS_CAMPO = [
     { id: 'texto',       nombre: 'Texto corto' },
     { id: 'texto_largo', nombre: 'Texto largo' },
@@ -63,14 +61,6 @@ const servicio = (() => {
     { id: 'opcion',      nombre: 'Lista de opciones' },
     { id: 'casilla',     nombre: 'Casilla de verificación' },
   ];
-
-  function formularios() {
-    try {
-      const g = localStorage.getItem(CLAVE_FORMS);
-      if (g) return JSON.parse(g);
-    } catch { /* modo privado */ }
-    return [];
-  }
 
 
   /** Formularios activos de una campaña. Es lo que ve el agente. */
@@ -91,42 +81,23 @@ const servicio = (() => {
     try { localStorage.setItem(CLAVE_COLA, JSON.stringify(lista)); } catch { /* nada */ }
   }
 
-  /** Encola una respuesta. Se guarda SIEMPRE antes de intentar enviarla. */
-
   /**
-   * Intenta enviar lo pendiente.
-   * Reemplazar por: POST /api/respuestas
-   * `hayRed` simula la disponibilidad del backend, para poder demostrar
-   * el comportamiento sin conexión durante la presentación.
+   * Intenta enviar las respuestas que quedaron guardadas sin conexión.
+   *
+   * `hayServidor` lo decide quien llama, mirando si la plataforma tiene
+   * backend disponible. Si no lo hay, se cuenta el intento y las
+   * respuestas se quedan donde están: no se pierde ninguna.
    */
-  async function sincronizar(hayRed) {
-    await demora(400);
+  async function sincronizar(hayServidor) {
     const lista = pendientes();
     if (!lista.length) return { enviadas: 0, quedan: 0 };
-    if (hayRed === false) {
+    if (hayServidor === false) {
       lista.forEach((r) => { r.intentos++; });
       guardarPendientes(lista);
       throw new Error('Sin conexión con el servidor. Las respuestas quedan guardadas.');
     }
     guardarPendientes([]);
     return { enviadas: lista.length, quedan: 0 };
-  }
-
-  /* ═════════════════════════════════════════════════════════════════
-     HORARIOS
-     "El supervisor puede tomar acciones como cerrar horarios."
-     ═════════════════════════════════════════════════════════════════ */
-  const CLAVE_HOR = 'bpm.horarios';
-
-  function horarios() {
-    try {
-      const g = localStorage.getItem(CLAVE_HOR);
-      if (g) return JSON.parse(g);
-    } catch { /* nada */ }
-    return JSON.parse(JSON.stringify([]));
-  }
-  function guardarHorarios(l) {
-    try { localStorage.setItem(CLAVE_HOR, JSON.stringify(l)); } catch { /* nada */ }
   }
 
   function hayPbxConfigurada() {
@@ -166,7 +137,6 @@ const servicio = (() => {
   /* ═════════════════════════════════════════════════════════════════
      UTILIDADES
      ═════════════════════════════════════════════════════════════════ */
-  const demora = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /* ═══════════════════════════════════════════════════════════════
      ACCESO AL BACKEND
@@ -235,7 +205,7 @@ const servicio = (() => {
           if (f.subcategoria) cat[f.categoria].push(f.subcategoria);
         });
         return cat;
-      } catch { /* si falla, se usa el local */ }
+      } catch { /* si falla, se usan las de reserva */ }
     }
     return CATALOGO;
   }
@@ -562,10 +532,11 @@ const servicio = (() => {
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     GESTIÓN DE USUARIOS CONTRA EL BACKEND
+     GESTIÓN DE USUARIOS
 
-     Con backend, estas funciones trabajan sobre MySQL. Sin él, sobre
-     la lista local de este archivo. Las pantallas no distinguen.
+     Todas trabajan contra la base de datos a través del servidor. Si
+     el servidor no responde, devuelven una lista vacía en lugar de
+     fallar: la pantalla muestra que no hay datos y lo dice.
      ═══════════════════════════════════════════════════════════════ */
 
   /** Lista los usuarios. Siempre devuelve un arreglo. */
@@ -714,10 +685,10 @@ const servicio = (() => {
     }
   }
 
-  /** Campañas, desde el backend o locales. */
+  /** Las campañas de la operación. Vacío si el servidor no responde. */
   async function listarCampanas() {
     if (hayApi()) {
-      try { return await api('GET', '/campanas'); } catch { /* cae al local */ }
+      try { return await api('GET', '/campanas'); } catch { /* sin datos */ }
     }
     return [];
   }
@@ -729,9 +700,7 @@ const servicio = (() => {
 
   return {
     autenticar, credencialSip, cerrar, hayPbxConfigurada,
-    formularios,
     pendientes, sincronizar,
-    horarios, guardarHorarios,
 
     listarUsuarios, guardarUsuarioRemoto, cambiarRolRemoto, cambiarCampanaRemoto,
     restablecerClave, desactivarUsuario, reactivarUsuario, listarCampanas,
@@ -759,11 +728,6 @@ const servicio = (() => {
     eliminarFormulario, enviarRespuesta,
     listarPaises, listarDepartamentos, listarMunicipios,
     registrarPausa,
-    get usuarios()    { return []; },
-    /* Listas heredadas de cuando había datos locales. Hoy siempre
-       vienen del backend; se conservan vacías mientras las pantallas
-       que aún las consultan se van limpiando. */
-    get campanas()    { return []; },
     get tiposCampo()  { return TIPOS_CAMPO.map((t) => ({ ...t })); },
   };
 })();
