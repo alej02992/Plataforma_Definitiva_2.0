@@ -761,15 +761,38 @@
                 <button class="tab" data-t="numero">Digitar un número</button>
               </div>
             </div>
-            <div class="f"><label>Lo que se le dice</label>
+            <!-- La pregunta: con voz sintética se añade al final del
+                 mensaje. Con audio grabado no hace falta, porque la
+                 pregunta va dentro de la propia grabación. -->
+            <div class="f" id="blRespGuionBox"><label>Lo que se le dice</label>
               <input class="fi" id="blRespGuion" maxlength="500"
-                placeholder="Si está de acuerdo, marque 1."></div>
-            <div class="r2">
-              <div class="f" id="blTeclasBox"><label>Teclas válidas</label>
-                <input class="fi mono" id="blTeclas" placeholder="1,2"></div>
-              <div class="f" id="blDigitosBox" style="display:none"><label>Cuántos dígitos</label>
-                <input class="fi mono" id="blDigitos" type="number" min="1" max="20" value="10"></div>
-            </div>
+                placeholder="Si está de acuerdo, marque 1. Si no, marque 2.">
+              <div class="hint">Se añade al final del mensaje, con la misma voz.</div></div>
+
+            <div class="hint" id="blRespAudioHint" style="display:none;margin-bottom:10px">
+              Con audio grabado, <b>la pregunta va dentro de tu grabación</b>: termínala
+              diciendo, por ejemplo, "si está de acuerdo, marque 1". Aquí solo eliges
+              qué teclas se aceptan.</div>
+
+            <div class="f" id="blTeclasBox"><label>Teclas que se aceptan</label>
+              <div class="dias" id="blTeclasSel">
+                <label><input type="checkbox" value="1"> 1</label>
+                <label><input type="checkbox" value="2"> 2</label>
+                <label><input type="checkbox" value="3"> 3</label>
+                <label><input type="checkbox" value="4"> 4</label>
+                <label><input type="checkbox" value="5"> 5</label>
+                <label><input type="checkbox" value="6"> 6</label>
+                <label><input type="checkbox" value="7"> 7</label>
+                <label><input type="checkbox" value="8"> 8</label>
+                <label><input type="checkbox" value="9"> 9</label>
+                <label><input type="checkbox" value="0"> 0</label>
+              </div>
+              <!-- Las casillas escriben aquí: así el guardado no cambia -->
+              <input type="hidden" id="blTeclas"></div>
+
+            <div class="f" id="blDigitosBox" style="display:none"><label>Cuántos dígitos</label>
+              <input class="fi mono" id="blDigitos" type="number" min="1" max="20" value="10"
+                     style="max-width:120px"></div>
           </div>
 
           <!-- ── Cuándo llamar ── -->

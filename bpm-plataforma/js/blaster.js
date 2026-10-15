@@ -170,7 +170,7 @@ const blaster = (() => {
     $b('blVoz').value = '';
     $b('blPideRespuesta').checked = false;
     $b('blRespGuion').value = '';
-    $b('blTeclas').value = '1,2';
+    marcarTeclas('1,2');
     $b('blDigitos').value = '10';
     $b('blDesde').value = '08:00';
     $b('blHasta').value = '19:00';
@@ -190,6 +190,21 @@ const blaster = (() => {
 
   function mostrar(abierto) {
     $b('editorBlaster').style.display = abierto ? '' : 'none';
+
+    if (!abierto) {
+      /* Al cerrar, se ocultan también los paneles de abajo: destinatarios,
+         lanzamiento y respuestas. Están fuera del editor, y al eliminar
+         un blaster se quedaban a la vista con los datos de sus clientes. */
+      ['destinosBlaster', 'aprobarBlaster', 'respuestasBlaster']
+        .forEach((id) => { if ($b(id)) $b(id).style.display = 'none'; });
+
+      /* Y se desbloquean los campos, por cualquier camino que se cierre.
+         Si el último abierto estaba cancelado o en curso, sus campos
+         quedaban bloqueados y el siguiente formulario los heredaba. */
+      $b('editorBlaster').querySelectorAll('input, select, textarea, .tab')
+        .forEach((el) => { el.disabled = false; });
+      $b('btnBlGuardar').disabled = false;
+    }
   }
 
   async function abrirEditor(id) {
@@ -213,7 +228,7 @@ const blaster = (() => {
     $b('blVoz').value = actual.voz_id || '';
     $b('blPideRespuesta').checked = !!actual.respuesta;
     $b('blRespGuion').value = actual.respuesta_guion || '';
-    $b('blTeclas').value = actual.respuesta_opciones || '1,2';
+    marcarTeclas(actual.respuesta_opciones || '1,2');
     $b('blDigitos').value = actual.respuesta_digitos || 10;
     $b('blDesde').value = (actual.hora_inicio || '08:00').slice(0, 5);
     $b('blHasta').value = (actual.hora_fin || '19:00').slice(0, 5);
@@ -247,6 +262,12 @@ const blaster = (() => {
     $b('blGuionBox').style.display = t === 'audio' ? 'none' : '';
     $b('blAudioBox').style.display = t === 'audio' ? '' : 'none';
     $b('blVozBox').style.display = t === 'audio' ? 'none' : '';
+
+    /* Con audio grabado, la pregunta va dentro de la grabación: el campo
+       de texto sobra, y se reemplaza por una explicación. */
+    $b('blRespGuionBox').style.display = t === 'audio' ? 'none' : '';
+    $b('blRespAudioHint').style.display = t === 'audio' ? '' : 'none';
+
     revisarVariables();
   }
 
@@ -274,6 +295,22 @@ const blaster = (() => {
   }
 
   $b('blGuion').addEventListener('input', revisarVariables);
+
+  /* ── Teclas con casillas ──
+     Antes había que escribirlas separadas por comas. Las casillas
+     escriben en el mismo campo oculto, así que el guardado no cambia. */
+
+  function marcarTeclas(lista) {
+    const sel = String(lista || '').split(',').map((x) => x.trim());
+    document.querySelectorAll('#blTeclasSel input')
+      .forEach((c) => { c.checked = sel.includes(c.value); });
+    $b('blTeclas').value = sel.filter(Boolean).join(',');
+  }
+
+  $b('blTeclasSel').addEventListener('change', () => {
+    $b('blTeclas').value = [...document.querySelectorAll('#blTeclasSel input:checked')]
+      .map((c) => c.value).join(',');
+  });
 
   /* ── Respuesta ── */
 
