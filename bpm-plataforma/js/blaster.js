@@ -494,37 +494,39 @@ const blaster = (() => {
     if (!actual) return;
     $b('aprobarBlaster').style.display = '';
 
-    const puedeAprobar = (ui.sesion?.permisos || []).includes('blaster_aprobar');
+    /* Lanza quien prepara el blaster: el supervisor. Antes hacía falta
+       que un administrador lo aprobara, y la operación no puede esperar
+       a eso. El servidor sigue comprobando que sea de sus campañas. */
+    const puedeAprobar = (ui.sesion?.permisos || []).includes('blaster');
     const estado = actual.estado;
 
     let cuerpo = '';
 
-    if (estado === 'borrador' || estado === 'listo') {
+    /* "aprobado" se trata igual que listo: es un estado que dejaban las
+       versiones anteriores, donde aprobar y lanzar eran pasos separados.
+       Un blaster que quedó ahí tiene que poder lanzarse. */
+    if (estado === 'borrador' || estado === 'listo' || estado === 'aprobado') {
       cuerpo = puedeAprobar
-        ? avisoCaja('av-a', 'Al aprobarlo quedará listo para marcar. Revisa el mensaje y la lista antes.') +
-          `<div class="ctrls"><button class="b b-teal" data-estado="aprobado">Aprobar y lanzar</button></div>`
-        : avisoCaja('av-b', 'Preparado. Un administrador debe aprobarlo para que empiece a marcar.');
-    } else if (estado === 'aprobado' || estado === 'activo') {
+        ? avisoCaja('av-a', 'Al lanzarlo, la plataforma empezará a llamar. Revisa el mensaje y la lista antes.') +
+          `<div class="ctrls"><button class="b b-teal" data-estado="activo">Lanzar</button></div>`
+        : avisoCaja('av-b', 'Preparado para lanzar.');
+    } else if (estado === 'activo') {
       cuerpo = avisoCaja('av-b',
-        'Aprobado' + (actual.aprobado_en ? ' el ' + String(actual.aprobado_en).slice(0, 16).replace('T', ' ') : '') +
-        '. La marcación empezará cuando la central esté conectada a la plataforma.') +
+        'En curso: la plataforma está llamando a los destinatarios. ' +
+        'Solo marca dentro del horario y los días configurados.') +
         (puedeAprobar ? `<div class="ctrls">
           <button class="b b-gh" data-estado="pausado">Pausar</button>
           <button class="b b-red b-sm" data-estado="cancelado">Cancelar</button></div>` : '');
     } else if (estado === 'pausado') {
       cuerpo = avisoCaja('av-a', 'Pausado. No se está llamando a nadie.') +
         (puedeAprobar ? `<div class="ctrls">
-          <button class="b b-teal" data-estado="aprobado">Reanudar</button>
+          <button class="b b-teal" data-estado="activo">Reanudar</button>
           <button class="b b-red b-sm" data-estado="cancelado">Cancelar</button></div>` : '');
     } else {
       cuerpo = avisoCaja('av-b', `Este blaster está ${estado}.`);
     }
 
-    /* Mientras no exista el canal con Asterisk, conviene decirlo claro
-       para que nadie espere llamadas que no van a salir. */
-    $b('blAprobacion').innerHTML = cuerpo +
-      `<div class="hint" style="margin-top:8px">La marcación automática todavía no está
-       habilitada en el servidor: un blaster aprobado queda esperando.</div>`;
+    $b('blAprobacion').innerHTML = cuerpo;
   }
 
   $b('blAprobacion').addEventListener('click', async (e) => {
@@ -532,9 +534,12 @@ const blaster = (() => {
     if (!b || !actual) return;
 
     const destino = b.dataset.estado;
-    if (destino === 'aprobado' &&
-        !confirm(`¿Aprobar "${actual.nombre}"?\n\n` +
-                 'Quedará listo para llamar a todos los destinatarios cargados.')) return;
+    /* Aprobar y lanzar es lo mismo: al confirmarlo, la plataforma empieza
+       a llamar. Antes este botón solo lo aprobaba, y el motor —que marca
+       los blasters activos— nunca lo tomaba. */
+    if (destino === 'activo' && actual.estado !== 'pausado' &&
+        !confirm(`¿Lanzar "${actual.nombre}"?\n\n` +
+                 'La plataforma empezará a llamar a todos los destinatarios cargados.')) return;
     if (destino === 'cancelado' &&
         !confirm('¿Cancelar el blaster? No se podrá reanudar.')) return;
 
