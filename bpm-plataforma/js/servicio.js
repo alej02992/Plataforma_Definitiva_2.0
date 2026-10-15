@@ -25,13 +25,12 @@
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════
-   Los datos de negocio (contactos, catálogo de tipificación y
-   marcación rápida) vienen del backend. Aquí solo quedan las
-   estructuras vacías que el código necesita para no fallar mientras
-   el servidor responde.
+   El catálogo de tipificación viene del servidor. `CATALOGO` queda
+   como red de seguridad: si el servidor no responde justo cuando el
+   agente abre su escritorio, la pantalla muestra un desplegable vacío
+   en lugar de romperse.
    ═══════════════════════════════════════════════════════════════ */
 
-const DIRECTORIO = [];
 const CATALOGO = {};
 
 const servicio = (() => {
@@ -61,6 +60,7 @@ const servicio = (() => {
     { id: 'opcion',      nombre: 'Lista de opciones' },
     { id: 'casilla',     nombre: 'Casilla de verificación' },
   ];
+
 
 
   /** Formularios activos de una campaña. Es lo que ve el agente. */
@@ -101,7 +101,7 @@ const servicio = (() => {
   }
 
   function hayPbxConfigurada() {
-    return !!(CONFIG.pbx.wss && CONFIG.pbx.dominio && !CONFIG.simulador);
+    return !!(CONFIG.pbx.wss && CONFIG.pbx.dominio);
   }
 
   /** Inicia sesión contra el backend. La contraseña se valida en el
@@ -321,6 +321,20 @@ const servicio = (() => {
       lo vuelve a convertir en archivo para descargarlo. */
   const exportarReporte = (reporte, formato, filas, periodo, columnas) =>
     api('POST', '/reportes/exportar', { reporte, formato, filas, periodo, columnas });
+
+  /** Las troncales de la central, con su estado de registro. */
+  const listarTroncales = () => api('GET', '/troncales');
+
+  /** Las troncales que administra la plataforma. Nunca traen la clave. */
+  const listarTroncalesPropias = () => api('GET', '/troncales/propias');
+  const crearTroncal = (datos) => api('POST', '/troncales/propias', datos);
+  const guardarTroncal = (id, datos) => api('PUT', `/troncales/propias/${id}`, datos);
+  const eliminarTroncal = (id) => api('DELETE', `/troncales/propias/${id}`);
+
+  /** Pone la troncal en servicio o la saca. Es lo único que escribe en
+      la configuración de la central. */
+  const estadoTroncal = (id, estado) =>
+    api('PUT', `/troncales/propias/${id}/estado`, { estado });
 
   /* ── Tipificador ── */
 
@@ -710,6 +724,8 @@ const servicio = (() => {
     leerTabla, subirAudio, listarAudios,
     indicadoresDelDia, reporteLlamadas, reporteTipificaciones,
     listarFormulariosReporte, reporteFormulario, reporteSesiones, exportarReporte,
+    listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
+    eliminarTroncal, estadoTroncal,
     leerTipificador, guardarTipificador,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,

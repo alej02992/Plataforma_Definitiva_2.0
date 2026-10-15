@@ -775,3 +775,15 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .lgx-caja .cc-nivel{color:rgba(255,255,255,.6)}
 .lgx-caja .cc-ojo{color:rgba(255,255,255,.5)}
 .lgx-caja .cc-ojo:hover{color:var(--secondary)}
+
+/* ══════════ TRONCALES ══════════ */
+.trk{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);
+  border-radius:9px;background:#fff;margin-bottom:8px;border-left-width:3px}
+.trk.ok{border-left-color:var(--ok)}
+.trk.mal{border-left-color:var(--danger)}
+.trk.neutro{border-left-color:var(--ink-3)}
+.trk-bd{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.trk-bd b{font-size:14px;color:var(--ink)}
+.trk-bd span{font-size:11.5px;color:var(--ink-3)}
+.trk-est{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.trk-det{font-size:10.5px;color:var(--ink-3)}

@@ -122,6 +122,8 @@ const MENU = [
     icono:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/>' },
   { v:'seguridad', et:'Seguridad', permiso:'usuarios',
     icono:'<path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/>' },
+  { v:'troncales', et:'Troncales', permiso:'usuarios',
+    icono:'<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="7" cy="7" r="1.6"/><circle cx="7" cy="12" r="1.6"/><circle cx="7" cy="17" r="1.6"/>' },
   { v:'modulos', et:'Módulos', permiso:'modulos',
     icono:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
   { v:'diag', et:'Diagnóstico', permiso:'telefonia',
@@ -193,6 +195,7 @@ function irA(vista) {
     if (vista === 'admcampanas')  administracion.abrirAdmCampanas();
     if (vista === 'usuarios')     administracion.abrirUsuarios();
     if (vista === 'modulos')      administracion.abrirModulos();
+    if (vista === 'troncales' && typeof troncales !== 'undefined') troncales.abrir();
   }
 }
 
