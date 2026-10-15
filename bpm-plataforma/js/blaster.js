@@ -154,6 +154,14 @@ const blaster = (() => {
   $b('btnBlNuevo').addEventListener('click', () => {
     actual = null;
     mostrar(true);
+
+    /* Los campos se vuelven a habilitar. Si antes se abrió un blaster
+       cancelado o en curso, quedaban bloqueados —correcto para ese—,
+       y el formulario nuevo heredaba el bloqueo: no se podía escribir
+       nada ni elegir el tipo de mensaje. */
+    $b('editorBlaster').querySelectorAll('input, select, textarea, .tab')
+      .forEach((el) => { el.disabled = false; });
+    $b('btnBlGuardar').disabled = false;
     $b('blTitulo').textContent = 'Nuevo blaster';
     $b('blEstado').textContent = 'Borrador';
     $b('blNombre').value = '';
