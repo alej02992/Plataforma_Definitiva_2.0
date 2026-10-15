@@ -494,16 +494,17 @@
             <button class="tab" data-r="tipificaciones">Tipificación</button>
             <button class="tab" data-r="sesiones">Inicio de sesión</button>
             <button class="tab" data-r="formularios">Formularios</button>
+            <button class="tab" data-r="blaster">Blaster</button>
           </div>
           <p class="c-sub" id="rpAyuda">Cada llamada gestionada en la plataforma: quién la
             hizo, a qué número, cuánto duró y cómo se tipificó.</p>
 
-          <div class="r2">
+          <div class="r2" id="rpFechasBox">
             <div class="f"><label>Desde</label><input class="fi" type="date" id="rpDesde"></div>
             <div class="f"><label>Hasta</label><input class="fi" type="date" id="rpHasta"></div>
           </div>
 
-          <div class="r2">
+          <div class="r2" id="rpHorasBox">
             <div class="f"><label>Desde la hora</label>
               <input class="fi" type="time" id="rpHoraD" value="00:00"></div>
             <div class="f"><label>Hasta la hora</label>
@@ -516,6 +517,13 @@
           <div class="f" id="rpFormBox" style="display:none">
             <label>Formulario</label>
             <select class="fi" id="rpFormulario"></select>
+          </div>
+
+          <!-- Igual que con formularios: primero se elige cuál -->
+          <div class="f" id="rpBlasterBox" style="display:none">
+            <label>Blaster</label>
+            <select class="fi" id="rpBlaster"></select>
+            <div class="hint">Muestra la lista completa del blaster, sin filtro de fechas.</div>
           </div>
 
           <div class="r2">
@@ -789,6 +797,15 @@
               </div>
               <!-- Las casillas escriben aquí: así el guardado no cambia -->
               <input type="hidden" id="blTeclas"></div>
+
+            <!-- Qué significa cada tecla marcada. Es lo que aparece en el
+                 reporte en vez de "Marcó 1". -->
+            <div class="f" id="blEtiquetasBox">
+              <label>Qué significa cada tecla</label>
+              <div id="blEtiquetas"></div>
+              <div class="hint">Así el reporte dice "Quiere que lo llamen" en lugar de
+                "Marcó 1". Es opcional, pero quien lea el reporte lo agradecerá.</div>
+            </div>
 
             <div class="f" id="blDigitosBox" style="display:none"><label>Cuántos dígitos</label>
               <input class="fi mono" id="blDigitos" type="number" min="1" max="20" value="10"

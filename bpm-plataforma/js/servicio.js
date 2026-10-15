@@ -309,6 +309,22 @@ const servicio = (() => {
   const reporteTipificaciones = (f) => api('GET', '/reportes/tipificaciones?' + comoTexto(f));
   const reporteSesiones = (f) => api('GET', '/reportes/sesiones?' + comoTexto(f));
 
+  /** Los grupos de un blaster que se pueden pasar a una base, y el paso
+      en sí. */
+  const gruposBlaster = (id) => api('GET', `/blasters/${id}/grupos`);
+  const blasterABase = (id, grupo, nombre) =>
+    api('POST', `/blasters/${id}/a-base`, { grupo, nombre });
+
+  /** Genera con voz sintética el audio de un blaster. Con `muestra`,
+      solo uno de prueba para escucharlo antes de gastar en todos. */
+  const generarAudioBlaster = (id, muestra) =>
+    api('POST', `/blasters/${id}/audio`, { muestra: !!muestra });
+
+  /** Los blasters que el supervisor puede consultar, y el resultado de
+      uno: a quién se llamó, quién contestó y qué respondió. */
+  const listarBlastersReporte = () => api('GET', '/reportes/blasters');
+  const reporteBlaster = (id) => api('GET', `/reportes/blasters/${id}`);
+
   /** Los formularios que el supervisor puede consultar. */
   const listarFormulariosReporte = () => api('GET', '/reportes/formularios');
 
@@ -319,8 +335,8 @@ const servicio = (() => {
 
   /** El archivo lo arma el servidor y llega como texto; la plataforma
       lo vuelve a convertir en archivo para descargarlo. */
-  const exportarReporte = (reporte, formato, filas, periodo, columnas) =>
-    api('POST', '/reportes/exportar', { reporte, formato, filas, periodo, columnas });
+  const exportarReporte = (reporte, formato, filas, periodo, columnas, extra = {}) =>
+    api('POST', '/reportes/exportar', { reporte, formato, filas, periodo, columnas, ...extra });
 
   /** Las troncales de la central, con su estado de registro. */
   const listarTroncales = () => api('GET', '/troncales');
@@ -723,7 +739,8 @@ const servicio = (() => {
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
     leerTabla, subirAudio, listarAudios,
     indicadoresDelDia, reporteLlamadas, reporteTipificaciones,
-    listarFormulariosReporte, reporteFormulario, reporteSesiones, exportarReporte,
+    listarFormulariosReporte, reporteFormulario, listarBlastersReporte, reporteBlaster,
+    generarAudioBlaster, gruposBlaster, blasterABase, reporteSesiones, exportarReporte,
     listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
     eliminarTroncal, estadoTroncal,
     leerTipificador, guardarTipificador,

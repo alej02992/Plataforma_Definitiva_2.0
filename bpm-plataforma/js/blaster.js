@@ -228,7 +228,7 @@ const blaster = (() => {
     $b('blVoz').value = actual.voz_id || '';
     $b('blPideRespuesta').checked = !!actual.respuesta;
     $b('blRespGuion').value = actual.respuesta_guion || '';
-    marcarTeclas(actual.respuesta_opciones || '1,2');
+    marcarTeclas(actual.respuesta_opciones || '1,2', actual.respuesta_etiquetas);
     $b('blDigitos').value = actual.respuesta_digitos || 10;
     $b('blDesde').value = (actual.hora_inicio || '08:00').slice(0, 5);
     $b('blHasta').value = (actual.hora_fin || '19:00').slice(0, 5);
@@ -300,16 +300,52 @@ const blaster = (() => {
      Antes había que escribirlas separadas por comas. Las casillas
      escriben en el mismo campo oculto, así que el guardado no cambia. */
 
-  function marcarTeclas(lista) {
+  /* Lo escrito para cada tecla, para no perderlo al marcar y desmarcar */
+  let etiquetas = {};
+
+  function marcarTeclas(lista, conEtiquetas) {
     const sel = String(lista || '').split(',').map((x) => x.trim());
     document.querySelectorAll('#blTeclasSel input')
       .forEach((c) => { c.checked = sel.includes(c.value); });
     $b('blTeclas').value = sel.filter(Boolean).join(',');
+
+    etiquetas = {};
+    if (conEtiquetas) {
+      try {
+        etiquetas = typeof conEtiquetas === 'string' ? JSON.parse(conEtiquetas) : conEtiquetas;
+      } catch { etiquetas = {}; }
+    }
+    pintarEtiquetas();
+  }
+
+  /** Un campo por cada tecla marcada, para escribir qué significa. */
+  function pintarEtiquetas() {
+    const marcadas = [...document.querySelectorAll('#blTeclasSel input:checked')]
+      .map((c) => c.value);
+
+    $b('blEtiquetas').innerHTML = marcadas.length
+      ? marcadas.map((t) => `
+          <div class="bl-etq">
+            <span class="bl-etq-n">${seguro.texto(t)}</span>
+            <input class="fi" data-tecla="${seguro.texto(t)}" maxlength="60"
+                   value="${seguro.texto(etiquetas[t] || '')}"
+                   placeholder="${t === '1' ? 'Por ejemplo: Quiere que lo llamen'
+                                : t === '2' ? 'Por ejemplo: No le interesa' : 'Qué significa'}">
+          </div>`).join('')
+      : '<div class="hint">Marca primero las teclas que se aceptan.</div>';
   }
 
   $b('blTeclasSel').addEventListener('change', () => {
     $b('blTeclas').value = [...document.querySelectorAll('#blTeclasSel input:checked')]
       .map((c) => c.value).join(',');
+    pintarEtiquetas();
+  });
+
+  /* Lo que se escribe se guarda al momento, para que marcar otra tecla
+     —que vuelve a pintar los campos— no borre lo ya escrito. */
+  $b('blEtiquetas').addEventListener('input', (e) => {
+    const c = e.target.closest('[data-tecla]');
+    if (c) etiquetas[c.dataset.tecla] = c.value;
   });
 
   /* ── Respuesta ── */
@@ -324,6 +360,7 @@ const blaster = (() => {
     document.querySelectorAll('#blRespTipo .tab')
       .forEach((x) => x.classList.toggle('on', x.dataset.t === t));
     $b('blTeclasBox').style.display = t === 'tecla' ? '' : 'none';
+    $b('blEtiquetasBox').style.display = t === 'tecla' ? '' : 'none';
     $b('blDigitosBox').style.display = t === 'numero' ? '' : 'none';
   }
   $b('blRespTipo').addEventListener('click', (e) => {
@@ -344,6 +381,7 @@ const blaster = (() => {
     respuesta_tipo: respTipo,
     respuesta_guion: $b('blRespGuion').value.trim(),
     respuesta_opciones: $b('blTeclas').value.trim(),
+    respuesta_etiquetas: etiquetas,
     respuesta_digitos: Number($b('blDigitos').value) || 10,
     hora_inicio: $b('blDesde').value + ':00',
     hora_fin: $b('blHasta').value + ':00',
@@ -393,6 +431,61 @@ const blaster = (() => {
       await pintarLista();
       aviso('Blaster eliminado.', 'av-b');
     } catch (e) { aviso(e.message, 'av-a'); }
+  });
+
+  /* ═══════════ GENERAR EL AUDIO CON VOZ SINTÉTICA ═══════════ */
+
+  /** Reproduce en la pantalla el audio que devolvió el servidor. */
+  function reproductor(base64, texto) {
+    if (!base64) {
+      return '<div class="hint">El audio se generó, pero no se pudo preparar para ' +
+             'escucharlo aquí. La llamada lo reproducirá igual.</div>';
+    }
+    return `<div class="bl-oir">
+        <audio controls autoplay src="data:audio/wav;base64,${base64}"></audio>
+        ${texto ? `<div class="hint">"${seguro.texto(texto)}"</div>` : ''}
+      </div>`;
+  }
+
+  $b('blAprobacion').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-generar]');
+    if (!btn || !actual) return;
+
+    const muestra = btn.dataset.generar === 'muestra';
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = muestra ? 'Generando la muestra…' : 'Generando…';
+    $b('blAudioRes').innerHTML = '';
+
+    try {
+      const r = await servicio.generarAudioBlaster(actual.id, muestra);
+
+      if (muestra || actual.tipo === 'texto') {
+        $b('blAudioRes').innerHTML = reproductor(r.escuchar, r.texto);
+      } else {
+        /* Con variables: cuántos salieron y cuáles fallaron, para que se
+           pueda corregir la lista antes de lanzar. */
+        const fallos = r.fallidos || [];
+        $b('blAudioRes').innerHTML =
+          `<div class="hint" style="margin-top:6px">Se generaron <b>${seguro.texto(r.generados || 0)}</b> audios.${
+            fallos.length ? ` <b>${fallos.length} no se pudieron generar:</b> ${
+              seguro.texto(fallos.slice(0, 3).map((f) => f.error).join(' · '))}` : ''}</div>`;
+      }
+
+      /* El estado cambió: se vuelve a leer para que el panel lo refleje */
+      if (!muestra) {
+        actual = await servicio.leerBlaster(actual.id);
+        const res = $b('blAudioRes').innerHTML;
+        pintarAprobacion();
+        $b('blAudioRes').innerHTML = res;
+      }
+    } catch (err) {
+      $b('blAudioRes').innerHTML =
+        `<div class="aviso av-r" style="margin-top:8px"><div>${seguro.texto(err.message)}</div></div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
   });
 
   /* ═══════════ DESTINATARIOS ═══════════ */
@@ -551,10 +644,35 @@ const blaster = (() => {
        versiones anteriores, donde aprobar y lanzar eran pasos separados.
        Un blaster que quedó ahí tiene que poder lanzarse. */
     if (estado === 'borrador' || estado === 'listo' || estado === 'aprobado') {
+      /* Con texto a voz hay un paso antes de lanzar: generar el audio.
+         El servidor no deja lanzar sin él, y antes no había botón para
+         hacerlo: los blasters de texto no se podían lanzar nunca. */
+      const conVoz = actual.tipo === 'texto' || actual.tipo === 'variables';
+
+      const pasoAudio = !conVoz ? '' : `
+        <div class="bl-audio">
+          <div class="bl-audio-t"><b>1 · El audio del mensaje</b>
+            <span class="t ${actual.audio_archivo || actual.tipo === 'variables' ? 'g' : 'a'}">${
+              actual.tipo === 'variables' ? 'Uno por persona'
+                : actual.audio_archivo ? 'Generado' : 'Sin generar'}</span></div>
+          <p class="hint" style="margin:4px 0 8px">${
+            actual.tipo === 'variables'
+              ? 'Escucha una muestra con los datos del primer destinatario y, si suena bien, genera los de todos.'
+              : 'Genéralo y escúchalo antes de lanzar: así sabes exactamente qué va a oír el cliente.'}</p>
+          <div class="ctrls">
+            <button class="b b-gh b-sm" data-generar="muestra">Escuchar una muestra</button>
+            <button class="b b-teal b-sm" data-generar="todo">${
+              actual.tipo === 'variables' ? 'Generar los audios de todos' : 'Generar el audio'}</button>
+          </div>
+          <div id="blAudioRes"></div>
+        </div>`;
+
       cuerpo = puedeAprobar
-        ? avisoCaja('av-a', 'Al lanzarlo, la plataforma empezará a llamar. Revisa el mensaje y la lista antes.') +
+        ? pasoAudio +
+          avisoCaja('av-a', (conVoz ? '<b>2 · Lanzar.</b> ' : '') +
+            'Al lanzarlo, la plataforma empezará a llamar. Revisa el mensaje y la lista antes.') +
           `<div class="ctrls"><button class="b b-teal" data-estado="activo">Lanzar</button></div>`
-        : avisoCaja('av-b', 'Preparado para lanzar.');
+        : pasoAudio + avisoCaja('av-b', 'Preparado para lanzar.');
     } else if (estado === 'activo') {
       cuerpo = avisoCaja('av-b',
         'En curso: la plataforma está llamando a los destinatarios. ' +

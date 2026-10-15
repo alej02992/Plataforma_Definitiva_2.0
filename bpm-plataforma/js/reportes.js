@@ -25,6 +25,12 @@ const reportes = (() => {
   let filas = [];
   let columnasVistas = [];
 
+  /* Lo último consultado, para que el PDF lleve el mismo resumen que se
+     ve en la pantalla y no solo la tabla. */
+  let ultimoResumen = [];
+  let ultimoReparto = [];
+  let ultimoNombre = '';
+
   /* Qué pide y qué muestra cada reporte */
   const REPORTES = {
     llamadas: {
@@ -101,6 +107,28 @@ const reportes = (() => {
         ['Preguntas', r.campos ?? 0, 'tiene el formulario'],
       ],
     },
+    blaster: {
+      ayuda: 'El resultado de un blaster: a quién se llamó, quién contestó y qué respondió. ' +
+             'Muestra la lista completa, sin filtro de fechas.',
+      filtros: ['blaster'],
+      sinFechas: true,
+      pedir: (f) => servicio.reporteBlaster(f.blaster_id),
+      lista: (d) => d.destinatarios,
+      columnas: [
+        ['numero', 'Número'], ['nombre', 'Nombre'], ['estado', 'Estado'],
+        ['intentos', 'Intentos'], ['ultimaLlamada', 'Última llamada'],
+        ['respuesta', 'Respuesta'], ['respondio', 'Respondió el'],
+      ],
+      /* El embudo: de cuántos se llamó a cuántos respondieron. Es lo
+         primero que pregunta cualquiera. */
+      resumen: (s) => [
+        ['Destinatarios', s.destinatarios ?? 0, 'en la lista'],
+        ['Llamados', s.llamados ?? 0, `quedan ${s.pendientes ?? 0} por llamar`],
+        ['Contestaron', s.contestaron ?? 0, 'escucharon el mensaje', 'bien'],
+        ['Respondieron', s.respondieron ?? 0,
+         `${s.tasaRespuesta ?? 0}% de los que contestaron`],
+      ],
+    },
   };
 
   const reloj = (s) => {
@@ -153,10 +181,19 @@ const reportes = (() => {
     $r('rpNumeroBox').style.display = def.filtros.includes('numero') ? '' : 'none';
     $r('rpResultadoBox').style.display = def.filtros.includes('resultado') ? '' : 'none';
     $r('rpFormBox').style.display = def.filtros.includes('formulario') ? '' : 'none';
+    $r('rpBlasterBox').style.display = def.filtros.includes('blaster') ? '' : 'none';
+
+    /* El de blaster no usa fechas ni agente: se ocultan para que no
+       parezca que filtran algo. */
+    $r('rpFechasBox').style.display = def.sinFechas ? 'none' : '';
+    $r('rpHorasBox').style.display = def.sinFechas ? 'none' : '';
+    $r('rpAgente').closest('.f').style.display = def.sinFechas ? 'none' : '';
 
     if (def.filtros.includes('formulario')) llenarFormularios();
+    if (def.filtros.includes('blaster')) llenarBlasters();
 
     $r('rpRepartoBox').style.display = 'none';
+    $r('rpABaseBox').style.display = 'none';
     $r('rpResumen').innerHTML = '';
     $r('rpTabla').innerHTML = '<div class="vacio">Pulsa Consultar para ver el reporte.</div>';
     $r('rpTag').className = 't o';
@@ -180,6 +217,69 @@ const reportes = (() => {
       : '<option value="">No hay formularios en tus campañas</option>';
   }
 
+  async function llenarBlasters() {
+    let lista = [];
+    try { lista = await servicio.listarBlastersReporte(); } catch { /* ninguno */ }
+
+    $r('rpBlaster').innerHTML = lista.length
+      ? lista.map((b) => `<option value="${seguro.texto(b.id)}">${seguro.texto(b.nombre)}${
+          b.campana ? ' · ' + seguro.texto(b.campana) : ''} (${seguro.texto(b.destinatarios)})</option>`).join('')
+      : '<option value="">No hay blasters en tus campañas</option>';
+  }
+
+  /* ═══════════ DEL BLASTER A UNA BASE ═══════════ */
+
+  let grupoBlaster = null;
+
+  async function ofrecerGrupos(id, nombreBlaster) {
+    grupoBlaster = { id, nombre: nombreBlaster };
+    $r('rpABaseRes').innerHTML = '';
+
+    let grupos = [];
+    try { grupos = await servicio.gruposBlaster(id); } catch { grupos = []; }
+
+    if (!grupos.length) { $r('rpABaseBox').style.display = 'none'; return; }
+
+    $r('rpABaseBox').style.display = '';
+    $r('rpABaseGrupo').innerHTML = grupos.map((g) =>
+      `<option value="${seguro.texto(g.clave)}" data-nombre="${seguro.texto(g.nombre)}">${
+        seguro.texto(g.nombre)} (${seguro.texto(g.cantidad)})</option>`).join('');
+    sugerirNombre();
+  }
+
+  /* El nombre se sugiere a partir del blaster y del grupo, para que en
+     Marcación se sepa de dónde salió la base. */
+  function sugerirNombre() {
+    const op = $r('rpABaseGrupo').selectedOptions[0];
+    if (op && grupoBlaster) $r('rpABaseNombre').value = `${grupoBlaster.nombre} · ${op.dataset.nombre}`;
+  }
+  $r('rpABaseGrupo').addEventListener('change', sugerirNombre);
+
+  $r('btnRpABase').addEventListener('click', async () => {
+    if (!grupoBlaster) return;
+    const op = $r('rpABaseGrupo').selectedOptions[0];
+    if (!op) return;
+
+    if (!confirm(`¿Crear la base "${$r('rpABaseNombre').value}" con ${op.textContent}?\n\n` +
+                 'Nace en borrador: no se llama a nadie hasta que la actives en Marcación.')) return;
+
+    const btn = $r('btnRpABase');
+    btn.disabled = true; btn.textContent = 'Creando…';
+    try {
+      const r = await servicio.blasterABase(grupoBlaster.id, op.value, $r('rpABaseNombre').value.trim());
+      $r('rpABaseRes').innerHTML =
+        `<div class="aviso av-b" style="margin-top:10px"><div>Base <b>${seguro.texto(r.nombre)}</b> creada con
+          <b>${seguro.texto(r.cargados)}</b> contactos${r.excluidos
+            ? ` (${seguro.texto(r.excluidos)} se dejaron fuera por estar en la lista de no llamar)` : ''}.
+          Actívala desde <b>Marcación</b>.</div></div>`;
+    } catch (e) {
+      $r('rpABaseRes').innerHTML =
+        `<div class="aviso av-r" style="margin-top:10px"><div>${seguro.texto(e.message)}</div></div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Crear la base';
+    }
+  });
+
   /* ═══════════ CONSULTAR ═══════════ */
 
   $r('btnRpConsultar').addEventListener('click', consultar);
@@ -201,6 +301,15 @@ const reportes = (() => {
     if (hd && hd !== '00:00') filtros.desdeHora = hd;
     if (hh && hh !== '23:59') filtros.hastaHora = hh;
 
+    if (def.filtros.includes('blaster')) {
+      filtros.blaster_id = $r('rpBlaster').value;
+      if (!filtros.blaster_id) {
+        aviso('Elige primero un blaster.', 'av-a');
+        btn.disabled = false; btn.textContent = 'Consultar';
+        return;
+      }
+    }
+
     if (def.filtros.includes('formulario')) {
       filtros.formulario_id = $r('rpFormulario').value;
       if (!filtros.formulario_id) {
@@ -221,8 +330,14 @@ const reportes = (() => {
          definidas aquí. */
       columnasVistas = def.columnas || d.columnas || [];
 
-      pintarResumen(def.resumen(d.resumen || {}));
-      pintarReparto(d.reparto, tipo === 'formularios');
+      ultimoResumen = def.resumen(d.resumen || {});
+      ultimoReparto = d.reparto || [];
+      ultimoNombre = d.blaster || d.formulario || '';
+
+      pintarResumen(ultimoResumen);
+      pintarReparto(d.reparto, tipo === 'formularios' || tipo === 'blaster');
+
+      if (tipo === 'blaster') await ofrecerGrupos(filtros.blaster_id, d.blaster);
       pintarTabla(columnasVistas);
 
       $r('rpTag').className = 't ' + (filas.length ? 'g' : 'o');
@@ -312,8 +427,24 @@ const reportes = (() => {
 
       try {
         const periodo = `${$r('rpDesde').value} a ${$r('rpHasta').value}`;
+
+        /* El subtítulo: el blaster no filtra por fechas, así que lleva su
+           nombre; los demás llevan el periodo consultado. */
+        const subtitulo = tipo === 'blaster' ? ultimoNombre
+          : (ultimoNombre ? `${ultimoNombre} · ${periodo}` : periodo);
+
+        /* El reparto de tipificación es una lista plana; los de
+           formularios y blaster vienen por pregunta. El PDF los espera
+           por grupo, así que se unifica aquí. */
+        const reparto = !ultimoReparto.length ? []
+          : ultimoReparto[0].opciones ? ultimoReparto
+          : [{ etiqueta: 'Resultados', total: filas.length,
+               opciones: ultimoReparto.map((x) => ({ valor: x.resultado, cantidad: x.cantidad,
+                                                     porcentaje: x.porcentaje })) }];
+
         const r = await servicio.exportarReporte(tipo, formato, filas, periodo,
-          tipo === 'formularios' ? columnasVistas : null);
+          tipo === 'formularios' ? columnasVistas : null,
+          { subtitulo, resumen: ultimoResumen, reparto });
 
         /* El servidor manda el archivo como texto; aquí se vuelve a
            convertir en archivo para descargarlo. */
