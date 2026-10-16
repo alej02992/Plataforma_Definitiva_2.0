@@ -146,6 +146,12 @@ const reportes = (() => {
       $r('rpHasta').value = hoy;
     }
     await llenarAgentes();
+
+    /* Las listas de blasters y formularios se recargan cada vez que se
+       entra a Reportería. Antes se llenaban una sola vez: un blaster
+       creado después no aparecía hasta cambiar de pestaña. */
+    if (tipo === 'blaster') await llenarBlasters();
+    if (tipo === 'formularios') await llenarFormularios();
   }
 
   /* El desplegable sale del servidor, no de una lista local: así
