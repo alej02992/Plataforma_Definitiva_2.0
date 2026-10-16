@@ -582,8 +582,32 @@ const blaster = (() => {
     }
   });
 
+  /* Mientras el blaster está activo y abierto, la lista se refresca sola
+     cada cinco segundos. Antes mostraba lo que había al abrirla: una
+     llamada que ya había contestado seguía diciendo "pendiente". */
+  let relojDestinos = null;
+
+  function vigilarDestinos() {
+    clearInterval(relojDestinos);
+    relojDestinos = setInterval(async () => {
+      const abierto = $b('editorBlaster').style.display !== 'none';
+      const enVista = document.querySelector('.vista.on')?.dataset.v === 'blaster';
+      if (!actual || actual.estado !== 'activo' || !abierto || !enVista) {
+        clearInterval(relojDestinos); relojDestinos = null; return;
+      }
+      await pintarDestinos();
+
+      /* Si terminó mientras se miraba, el panel de lanzamiento cambia */
+      try {
+        const fresco = await servicio.leerBlaster(actual.id);
+        if (fresco.estado !== actual.estado) { actual = fresco; pintarAprobacion(); }
+      } catch { /* sigue con lo que tiene */ }
+    }, 5000);
+  }
+
   async function pintarDestinos() {
     if (!actual) return;
+    if (actual.estado === 'activo' && !relojDestinos) vigilarDestinos();
     let d = [];
     try { d = await servicio.listarDestinos(actual.id); } catch { /* ninguno */ }
     const filas = Array.isArray(d) ? d : (d.destinos || []);
@@ -594,13 +618,31 @@ const blaster = (() => {
       return;
     }
 
+    /* El estado en palabras, y si ya se intentó, cuándo se reintenta.
+       Antes un "pendiente" no decía si se había llamado o no. */
+    const NOMBRES = {
+      pendiente: 'Por llamar', llamando: 'Llamando', contestada: 'Contestó',
+      sin_respuesta: 'No contestó', fallida: 'Falló', buzon: 'Buzón', excluido: 'Excluido',
+    };
+    const estadoDe = (f) => {
+      if (f.estado === 'pendiente' && f.intentos > 0) {
+        const h = f.proximo_intento ? String(f.proximo_intento).slice(11, 16) : '';
+        return h ? `Reintento ${h}` : 'Reintento';
+      }
+      return NOMBRES[f.estado] || f.estado;
+    };
+    const tono = (f) => f.estado === 'contestada' ? 'g'
+      : f.estado === 'llamando' ? 'b'
+      : (f.estado === 'pendiente' && !f.intentos) ? 'o' : 'a';
+
     $b('blRevision').innerHTML = `<div style="overflow-x:auto"><table class="tb">
-      <tr><th>Número</th><th>Nombre</th><th>Estado</th><th>Intentos</th></tr>
+      <tr><th>Número</th><th>Nombre</th><th>Estado</th><th>Intentos</th><th>Motivo</th></tr>
       ${filas.slice(0, 200).map((f) => `<tr>
         <td class="mono">${seguro.texto(f.numero)}</td>
         <td>${seguro.celda(f.nombre)}</td>
-        <td><span class="t ${f.estado === 'contestada' ? 'g' : 'o'}">${seguro.texto(f.estado)}</span></td>
+        <td><span class="t ${tono(f)}">${seguro.texto(estadoDe(f))}</span></td>
         <td class="mono">${seguro.texto(f.intentos ?? 0)}</td>
+        <td>${seguro.celda(f.ultimo_motivo)}</td>
       </tr>`).join('')}</table>
       ${filas.length > 200 ? `<div class="hint">Se muestran los primeros 200 de ${filas.length}.</div>` : ''}
       </div>`;
