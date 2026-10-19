@@ -775,8 +775,26 @@ const blaster = (() => {
     $b('respuestasBlaster').style.display = '';
     $b('blRespN').textContent = r.total;
 
-    const conteo = Object.entries(r.conteo || {})
-      .map(([valor, n]) => `<div class="cf-item"><b>${seguro.texto(valor)}</b>
+    /* Lo que significa cada tecla, igual que en el reporte: "1 · De
+       acuerdo" se entiende sin tener que acordarse del mensaje. */
+    let etiquetas = {};
+    try {
+      etiquetas = typeof actual.respuesta_etiquetas === 'string'
+        ? JSON.parse(actual.respuesta_etiquetas || '{}') : (actual.respuesta_etiquetas || {});
+    } catch { etiquetas = {}; }
+
+    const esNumero = actual.respuesta_tipo === 'numero';
+    const nombreDe = (valor) => {
+      const v = String(valor ?? '');
+      if (/^invalida:/.test(v)) return `Inválida (${v.split(':')[1]})`;
+      return etiquetas[v] ? `${v} · ${etiquetas[v]}` : v;
+    };
+
+    /* El conteo solo tiene sentido con teclas. Al digitar un número,
+       cada respuesta es distinta: saldría un recuadro por documento. */
+    const conteo = esNumero ? '' : Object.entries(r.conteo || {})
+      .filter(([valor]) => !/^invalida:/.test(valor))
+      .map(([valor, n]) => `<div class="cf-item"><b>${seguro.texto(nombreDe(valor))}</b>
         <span>${seguro.texto(n)} respuesta(s)</span></div>`).join('');
 
     $b('blRespuestas').innerHTML = `
@@ -786,7 +804,7 @@ const blaster = (() => {
         ${(r.respuestas || []).map((x) => `<tr>
           <td class="mono">${seguro.texto(x.numero)}</td>
           <td>${seguro.celda(x.nombre)}</td>
-          <td><b class="mono">${seguro.texto(x.valor)}</b></td>
+          <td><b>${seguro.texto(nombreDe(x.valor))}</b></td>
           <td class="mono">${seguro.texto(String(x.creada || '').slice(0, 16).replace('T', ' '))}</td>
         </tr>`).join('')}</table></div>`;
   }

@@ -823,9 +823,16 @@
                 "Marcó 1". Es opcional, pero quien lea el reporte lo agradecerá.</div>
             </div>
 
-            <div class="f" id="blDigitosBox" style="display:none"><label>Cuántos dígitos</label>
+            <div class="f" id="blDigitosBox" style="display:none"><label>Máximo de dígitos</label>
               <input class="fi mono" id="blDigitos" type="number" min="1" max="20" value="10"
-                     style="max-width:120px"></div>
+                     style="max-width:120px">
+              <!-- Un documento no siempre tiene los mismos dígitos: una
+                   cédula puede tener 8 o 10. La tecla # termina la
+                   respuesta sin esperar. -->
+              <div class="hint">El número más largo que puede digitar. Si marca menos, la
+                plataforma espera unos segundos y lo toma igual.
+                <b>Pídele que termine con la tecla # (numeral)</b>: así no tiene que esperar.
+                Con audio grabado, dilo en la grabación: "digite su cédula y presione numeral".</div></div>
           </div>
 
           <!-- ── Cuándo llamar ── -->
