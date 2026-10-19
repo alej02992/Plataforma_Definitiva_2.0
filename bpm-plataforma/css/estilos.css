@@ -787,3 +787,7 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .trk-bd span{font-size:11.5px;color:var(--ink-3)}
 .trk-est{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
 .trk-det{font-size:10.5px;color:var(--ink-3)}
+
+/* ══════════ REPORTE · los que no respondieron, en gris ══════════ */
+.rep-sin .rep-barra i{background:var(--ink-3)}
+.rep-sin .rep-nom{color:var(--ink-3)}

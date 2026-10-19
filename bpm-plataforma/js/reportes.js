@@ -376,7 +376,7 @@ const reportes = (() => {
     $r('rpRepartoBox').style.display = '';
 
     const barras = (lista) => lista.map((x) => `
-      <div class="rep-fila">
+      <div class="rep-fila${x.sinRespuesta ? ' rep-sin' : ''}">
         <span class="rep-nom">${seguro.texto(x.resultado ?? x.valor)}</span>
         <span class="rep-barra"><i style="width:${Math.max(2, x.porcentaje)}%"></i></span>
         <span class="rep-num mono">${seguro.texto(x.cantidad)}</span>
@@ -387,7 +387,8 @@ const reportes = (() => {
       ? reparto.map((p) => `
           <div style="margin-bottom:14px">
             <div class="dia-h"><h3>${seguro.texto(p.etiqueta)}</h3>
-              <span class="dia-sub">${seguro.texto(p.total)} respuestas</span></div>
+              <span class="dia-sub">${seguro.texto(p.total)} ${
+                /lista/i.test(p.etiqueta || '') ? 'personas' : 'respuestas'}</span></div>
             ${barras(p.opciones)}
           </div>`).join('')
       : barras(reparto);
