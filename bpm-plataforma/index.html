@@ -768,8 +768,12 @@
           </div>
 
           <div class="f" id="blVozBox">
-            <label>Voz</label>
-            <input class="fi mono" id="blVoz" placeholder="Identificador de la voz en el proveedor">
+            <label>Voz <span style="font-weight:400;color:var(--ink-3)">(opcional)</span></label>
+            <input class="fi mono" id="blVoz" placeholder="Vacío: usa la voz del servidor">
+            <!-- Solo hace falta para usar una voz distinta en este
+                 blaster. Si se deja vacío, se usa TTS_VOZ del .env. -->
+            <div class="hint">Déjalo vacío para usar la voz configurada en el servidor.
+              Escríbela solo si este blaster debe sonar con otra.</div>
           </div>
 
           <!-- ── Respuesta del cliente ── -->

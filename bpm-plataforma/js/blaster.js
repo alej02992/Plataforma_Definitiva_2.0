@@ -711,7 +711,9 @@ const blaster = (() => {
 
       cuerpo = puedeAprobar
         ? pasoAudio +
-          avisoCaja('av-a', (conVoz ? '<b>2 · Lanzar.</b> ' : '') +
+          /* Texto plano: este cuadro no interpreta HTML, por seguridad.
+             Antes llevaba una negrita y se veían las etiquetas. */
+          avisoCaja('av-a', (conVoz ? '2 · Lanzar. ' : '') +
             'Al lanzarlo, la plataforma empezará a llamar. Revisa el mensaje y la lista antes.') +
           `<div class="ctrls"><button class="b b-teal" data-estado="activo">Lanzar</button></div>`
         : pasoAudio + avisoCaja('av-b', 'Preparado para lanzar.');
