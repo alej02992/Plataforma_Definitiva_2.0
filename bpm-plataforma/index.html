@@ -1198,23 +1198,47 @@
 
       <!-- ══════ USUARIOS Y ROLES · superadmin ══════ -->
       <section class="vista" data-v="usuarios">
-        <div class="c">
-          <div class="c-h"><h2>Usuarios</h2>
+        <div class="c plegable" data-pleg="usuarios">
+          <div class="c-h">
+            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Usuarios</h2>
+              <span class="t b" id="usrTotal">—</span></button>
             <button class="b b-teal b-sm" id="btnUsrNuevo">Nuevo usuario</button></div>
+          <div class="pleg-cuerpo">
           <p class="c-sub">Cambia el rol con un clic. El usuario lo ve al volver a
             iniciar sesión. Marca las casillas para eliminar varios a la vez.</p>
+
+          <!-- Buscar y filtrar: con cincuenta usuarios, recorrer la lista no aguanta -->
+          <div class="usr-filtros">
+            <input class="fi" id="usrBuscar" placeholder="Buscar por nombre, usuario o extensión…" autocomplete="off">
+            <select class="fi" id="usrFiltroEstado">
+              <option value="">Todos</option>
+              <option value="activo" selected>Activos</option>
+              <option value="baja">Dados de baja</option>
+            </select>
+            <select class="fi" id="usrFiltroRol">
+              <option value="">Todos los roles</option>
+              <option value="agente">Agentes</option>
+              <option value="supervisor">Supervisores</option>
+              <option value="admin">Administradores</option>
+            </select>
+            <label class="b b-gh b-sm" style="cursor:pointer;white-space:nowrap" title="Marca automáticamente los usuarios de un Excel o CSV">
+              Seleccionar desde archivo
+              <input type="file" id="usrSelArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none"></label>
+          </div>
+          <div id="usrSelRes"></div>
 
           <!-- Aparece al marcar usuarios: acciones sobre todos a la vez -->
           <div class="usr-barra" id="usrBarra" style="display:none">
             <span id="usrBarraTxt"></span>
             <div class="ctrls" style="margin:0">
-              <button class="b b-red b-sm" id="btnUsrBajaVarios">Dar de baja</button>
+              <button class="b b-gh b-sm" id="btnUsrBajaVarios">Dar de baja</button>
               <button class="b b-red b-sm" id="btnUsrBorrarVarios">Eliminar definitivamente</button>
               <button class="b b-gh b-sm" id="btnUsrQuitarSel">Quitar selección</button>
             </div>
           </div>
 
           <div id="tablaUsuarios"></div>
+          </div>
         </div>
 
         <div class="c" id="editorUsuario" style="display:none">
@@ -1256,10 +1280,13 @@
             <button class="b b-gh b-sm" id="btnUsrCancel">Cancelar</button>
           </div>
         </div>
-        <div class="c">
-          <div class="c-h"><h2>Distribución de agentes</h2>
+        <div class="c plegable" data-pleg="distribucion">
+          <div class="c-h">
+            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Distribución de agentes</h2>
+              <span class="t b" id="distTotal">—</span></button>
             <input class="fi" id="distBuscar" placeholder="Buscar agente…"
                    style="max-width:220px;margin-left:auto" autocomplete="off"></div>
+          <div class="pleg-cuerpo">
           <p class="c-sub">Cada columna es una campaña con sus agentes. Marca los que
             quieras mover, elige el destino y confirma.</p>
 
@@ -1275,10 +1302,13 @@
           </div>
           <div class="hint" style="margin-top:6px">Si el agente está en una llamada, el
             cambio se aplica al terminarla.</div>
+          </div>
         </div>
-        <div class="c">
-          <div class="c-h"><h2>Carga masiva de usuarios</h2>
-            <span class="t o" id="masN">—</span></div>
+        <div class="c plegable" data-pleg="carga">
+          <div class="c-h">
+            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Carga masiva de usuarios</h2>
+              <span class="t o" id="masN">—</span></button></div>
+          <div class="pleg-cuerpo">
           <p class="c-sub">Para dar de alta muchas personas de una vez. Sube el archivo,
             revisa lo que se va a crear y confirma.</p>
 
@@ -1292,6 +1322,7 @@
           </div>
 
           <div id="masResultado"><div class="vacio">Aún no has subido ningún archivo.</div></div>
+          </div>
         </div>
       </section>
 

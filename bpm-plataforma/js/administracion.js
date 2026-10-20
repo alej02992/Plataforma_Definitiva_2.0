@@ -88,6 +88,11 @@ const administracion = (() => {
   let agentesDist = [];
   const marcadosDist = new Set();
 
+  /* Cuántos se ven por campaña antes de pulsar "Ver todos". Con veinte o
+     cincuenta agentes, la columna crecería hasta el fondo de la página. */
+  const VISIBLES = 5;
+  const columnasAbiertas = new Set();
+
   async function pintarDistribucion() {
     /* Las campañas se cargaban solo al visitar la vista de Campañas. Si
        se entraba directo a Usuarios, no había columnas ni destinos. */
@@ -96,6 +101,7 @@ const administracion = (() => {
     }
     const todos = await servicio.listarUsuarios();
     agentesDist = todos.filter((u) => u.rol === 'agente' && u.activo !== false);
+    if ($$('distTotal')) $$('distTotal').textContent = `${agentesDist.length} agentes`;
     dibujarColumnas();
 
     $$('selDestino').innerHTML = campanas.map((c) =>
@@ -129,6 +135,13 @@ const administracion = (() => {
 
     $$('distCols').innerHTML = columnas.map((col) => {
       const visibles = col.agentes.filter(coincide);
+
+      /* Se muestran los primeros; el resto, al pulsar "Ver todos". Si se
+         está buscando, se muestran todos los que coinciden. */
+      const abierta = filtro || columnasAbiertas.has(col.nombre);
+      const mostrar = abierta ? visibles : visibles.slice(0, VISIBLES);
+      const ocultos = visibles.length - mostrar.length;
+
       return `
       <div class="dist-col${col.vacia ? ' dist-col-sin' : ''}">
         <div class="dist-col-h">
@@ -140,7 +153,7 @@ const administracion = (() => {
             ${visibles.length && visibles.every((a) => marcadosDist.has(clave(a))) ? 'checked' : ''}>
             Marcar todos</label>` : ''}
         <div class="dist-lista">
-          ${visibles.map((a) => `
+          ${mostrar.map((a) => `
             <label class="dist-ag${marcadosDist.has(clave(a)) ? ' on' : ''}">
               <input type="checkbox" data-ag="${seguro.texto(clave(a))}"
                 ${marcadosDist.has(clave(a)) ? 'checked' : ''}>
@@ -150,6 +163,10 @@ const administracion = (() => {
             </label>`).join('') ||
             `<div class="dist-vacia">${col.agentes.length ? 'Ninguno coincide' : 'Sin agentes'}</div>`}
         </div>
+        ${ocultos > 0 ? `<button class="dist-mas" type="button" data-ver="${seguro.texto(col.nombre)}">
+            Ver los ${visibles.length} ▾</button>`
+          : (!filtro && columnasAbiertas.has(col.nombre) && visibles.length > VISIBLES
+            ? `<button class="dist-mas" type="button" data-ver="${seguro.texto(col.nombre)}">Ver menos ▴</button>` : '')}
       </div>`;
     }).join('');
 
@@ -187,6 +204,14 @@ const administracion = (() => {
   });
 
   $$('distBuscar')?.addEventListener('input', dibujarColumnas);
+
+  $$('distCols')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ver]');
+    if (!b) return;
+    const n = b.dataset.ver;
+    if (columnasAbiertas.has(n)) columnasAbiertas.delete(n); else columnasAbiertas.add(n);
+    dibujarColumnas();
+  });
 
   $$('btnDistLimpiar')?.addEventListener('click', () => {
     marcadosDist.clear();
@@ -713,7 +738,34 @@ const administracion = (() => {
 
   let usuarios = [];        // lo que se está mostrando
 
+  /* ── Apartados plegables ──
+     Al entrar se ven los tres títulos con su número; se despliega el que
+     se va a usar. Así la página no se vuelve eterna con muchos usuarios.
+     Lo abierto se recuerda mientras dure la sesión. */
+  const abiertos = new Set();
+
+  function aplicarPlegables() {
+    document.querySelectorAll('[data-v="usuarios"] .plegable').forEach((c) => {
+      const abierto = abiertos.has(c.dataset.pleg);
+      c.classList.toggle('abierto', abierto);
+      const f = c.querySelector('.pleg-f');
+      if (f) f.textContent = abierto ? '▾' : '▸';
+    });
+  }
+
+  document.querySelectorAll('[data-v="usuarios"] .plegable .pleg-t').forEach((b) => {
+    b.addEventListener('click', () => {
+      const id = b.closest('.plegable').dataset.pleg;
+      if (abiertos.has(id)) abiertos.delete(id); else abiertos.add(id);
+      aplicarPlegables();
+    });
+  });
+
+  /* "Nuevo usuario" despliega la lista, para que se vea el resultado */
+  $$('btnUsrNuevo')?.addEventListener('click', () => { abiertos.add('usuarios'); aplicarPlegables(); });
+
   async function abrirUsuarios() {
+    aplicarPlegables();
     await pintarDistribucion();
     const cs = await servicio.listarCampanas();
     $$('usrCampana').innerHTML = cs.map((c) =>
@@ -751,20 +803,25 @@ const administracion = (() => {
        ya dados de baja. Es la misma regla que la de uno en uno. */
     $$('btnUsrBajaVarios').style.display = activos.length ? '' : 'none';
     $$('btnUsrBajaVarios').textContent = `Dar de baja (${activos.length})`;
-    $$('btnUsrBorrarVarios').style.display = inactivos.length ? '' : 'none';
-    $$('btnUsrBorrarVarios').textContent = `Eliminar definitivamente (${inactivos.length})`;
+    /* Eliminar definitivamente aplica a TODOS los marcados: a los
+       activos se les da de baja primero, en el mismo paso. Antes había
+       que darlos de baja, volver a marcarlos y eliminarlos. */
+    $$('btnUsrBorrarVarios').style.display = '';
+    $$('btnUsrBorrarVarios').textContent = `Eliminar definitivamente (${marcados.length})`;
 
     const todos = $$('usrTodos');
     if (todos) {
-      const marcables = usuarios.filter((u) => u.usuario !== ui.sesion?.usuario);
+      const marcables = filtrados().filter((u) => u.usuario !== ui.sesion?.usuario);
       todos.checked = marcables.length > 0 && marcables.every((u) => seleccion.has(String(u.id)));
     }
   }
 
   $$('tablaUsuarios')?.addEventListener('change', (e) => {
     if (e.target.id === 'usrTodos') {
+      /* Solo los que se ven: si se filtró por "dados de baja", marcar
+         todos no debe arrastrar a los activos que no están a la vista. */
       const marcar = e.target.checked;
-      usuarios.filter((u) => u.usuario !== ui.sesion?.usuario)
+      filtrados().filter((u) => u.usuario !== ui.sesion?.usuario)
         .forEach((u) => (marcar ? seleccion.add(String(u.id)) : seleccion.delete(String(u.id))));
       $$('tablaUsuarios').querySelectorAll('[data-sel]').forEach((c) => { c.checked = marcar; });
     } else if (e.target.dataset.sel) {
@@ -774,6 +831,59 @@ const administracion = (() => {
       return;
     }
     actualizarBarra();
+  });
+
+  /* ── Seleccionar desde archivo ──
+     Para cuando llega una lista larga —de Recursos Humanos, por ejemplo—
+     con las personas que salieron. El archivo no borra nada: solo marca
+     las casillas, y después se usa la misma barra de siempre. */
+  $$('usrSelArchivo')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    e.target.value = '';
+
+    $$('usrSelRes').innerHTML = '<div class="hint">Leyendo el archivo…</div>';
+
+    let filas;
+    try {
+      ({ filas } = await servicio.leerTabla(archivo));
+    } catch (err) {
+      $$('usrSelRes').innerHTML = `<div class="aviso av-r"><div>${seguro.texto(err.message)}</div></div>`;
+      return;
+    }
+
+    /* Se busca por usuario, que es único. Si el archivo no trae esa
+       columna, se intenta con la primera que tenga. */
+    const valores = (filas || []).map((f) => {
+      const v = f.usuario ?? f.Usuario ?? f.USUARIO ?? Object.values(f)[0];
+      return String(v ?? '').trim().toLowerCase();
+    }).filter(Boolean);
+
+    const encontrados = [];
+    const noEstan = [];
+    const yoMismo = ui.sesion?.usuario;
+
+    [...new Set(valores)].forEach((v) => {
+      const u = usuarios.find((x) => String(x.usuario).toLowerCase() === v);
+      if (!u) noEstan.push(v);
+      else if (u.usuario !== yoMismo) encontrados.push(u);
+    });
+
+    encontrados.forEach((u) => seleccion.add(String(u.id)));
+
+    /* Que se vea lo marcado: se quitan los filtros y se abre la lista */
+    $$('usrBuscar').value = '';
+    $$('usrFiltroEstado').value = '';
+    $$('usrFiltroRol').value = '';
+    abiertos.add('usuarios');
+    aplicarPlegables();
+    pintarUsuarios();
+
+    $$('usrSelRes').innerHTML = `<div class="aviso ${noEstan.length ? 'av-a' : 'av-b'}"><div>
+      Se marcaron <b>${encontrados.length}</b> usuario(s) del archivo.${noEstan.length
+        ? ` <b>${noEstan.length}</b> no existen en la plataforma: ${
+            seguro.texto(noEstan.slice(0, 6).join(', '))}${noEstan.length > 6 ? '…' : ''}` : ''}
+      ${encontrados.length ? 'Revisa la lista y usa la barra para eliminarlos.' : ''}</div></div>`;
   });
 
   $$('btnUsrQuitarSel')?.addEventListener('click', () => {
@@ -810,6 +920,8 @@ const administracion = (() => {
     boton.disabled = false;
     boton.textContent = original;
     await recargarUsuarios();
+    /* La distribución también: si no, seguiría mostrando a los eliminados */
+    await pintarDistribucion();
 
     aviso(fallos.length
       ? `${bien} de ${lista.length} listos. No se pudo con: ${fallos.slice(0, 3).join(' · ')}${
@@ -830,20 +942,59 @@ const administracion = (() => {
   });
 
   $$('btnUsrBorrarVarios')?.addEventListener('click', async () => {
-    const lista = usuarios.filter((u) => seleccion.has(String(u.id)) && u.activo === false);
+    const lista = usuarios.filter((u) => seleccion.has(String(u.id)));
     if (!lista.length) return;
     if (!confirm(`¿Eliminar DEFINITIVAMENTE a ${lista.length} usuario(s)?\n\n` +
                  lista.slice(0, 8).map((u) => '· ' + u.nombre).join('\n') +
                  (lista.length > 8 ? `\n· y ${lista.length - 8} más` : '') +
                  '\n\nDesaparecen de la lista. Sus llamadas y gestiones se conservan ' +
                  'en los reportes, con su nombre.\n\nEsto no se puede deshacer.')) return;
-    await aplicarAVarios(lista, (id) => servicio.eliminarUsuarioDefinitivo(id), 'Eliminando',
-                         $$('btnUsrBorrarVarios'));
+    /* A los activos se les da de baja y se eliminan en seguida: el
+       borrado definitivo, por diseño, solo aplica a usuarios de baja. */
+    await aplicarAVarios(lista, async (id) => {
+      const u = usuarios.find((x) => String(x.id) === String(id));
+      if (u && u.activo !== false) {
+        const r = await servicio.desactivarUsuario(id);
+        if (r && r.ok === false) return r;
+      }
+      return servicio.eliminarUsuarioDefinitivo(id);
+    }, 'Eliminando', $$('btnUsrBorrarVarios'));
   });
 
+  /** Los usuarios que pasan el buscador y los filtros. */
+  function filtrados() {
+    const q = String($$('usrBuscar')?.value || '').trim().toLowerCase();
+    const estado = $$('usrFiltroEstado')?.value || '';
+    const rol = $$('usrFiltroRol')?.value || '';
+
+    return usuarios.filter((u) => {
+      if (estado === 'activo' && u.activo === false) return false;
+      if (estado === 'baja' && u.activo !== false) return false;
+      if (rol && u.rol !== rol) return false;
+      if (!q) return true;
+      return [u.nombre, u.usuario, u.extension, u.campana]
+        .some((v) => String(v ?? '').toLowerCase().includes(q));
+    });
+  }
+
+  ['usrBuscar', 'usrFiltroEstado', 'usrFiltroRol'].forEach((id) =>
+    $$(id)?.addEventListener(id === 'usrBuscar' ? 'input' : 'change', () => pintarUsuarios()));
+
   function pintarUsuarios() {
+    if ($$('usrTotal')) {
+      const activos = usuarios.filter((u) => u.activo !== false).length;
+      $$('usrTotal').textContent = activos === usuarios.length ? `${activos}` : `${activos} activos`;
+    }
+
     if (!usuarios.length) {
       $$('tablaUsuarios').innerHTML = '<div class="vacio">No hay usuarios registrados.</div>';
+      return;
+    }
+
+    const lista = filtrados();
+    if (!lista.length) {
+      $$('tablaUsuarios').innerHTML = '<div class="vacio">Ningún usuario coincide con la búsqueda.</div>';
+      actualizarBarra();
       return;
     }
     /* Una casilla por usuario para eliminar varios a la vez. La propia
@@ -854,7 +1005,7 @@ const administracion = (() => {
     $$('tablaUsuarios').innerHTML = `<table class="tb">
       <tr><th style="width:28px"><input type="checkbox" id="usrTodos" title="Marcar todos"></th>
         <th>Nombre</th><th>Usuario</th><th>Extensión</th><th>Campaña</th><th>Rol</th><th></th></tr>
-      ${usuarios.map((u) => `<tr${u.activo === false ? ' style="opacity:.5"' : ''}>
+      ${lista.map((u) => `<tr${u.activo === false ? ' style="opacity:.5"' : ''}>
         <td>${u.usuario === yo ? ''
           : `<input type="checkbox" data-sel="${seguro.texto(u.id)}"${seleccion.has(String(u.id)) ? ' checked' : ''}>`}</td>
         <td><b>${seguro.texto(u.nombre)}</b>${u.activo === false ? ' <span class="t o">Inactivo</span>' : ''}</td>
