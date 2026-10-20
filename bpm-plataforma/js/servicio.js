@@ -315,6 +315,9 @@ const servicio = (() => {
   const blasterABase = (id, grupo, nombre) =>
     api('POST', `/blasters/${id}/a-base`, { grupo, nombre });
 
+  /** El audio ya generado de una persona, para oírlo en la pantalla. */
+  const escucharDestino = (id, did) => api('GET', `/blasters/${id}/destinos/${did}/audio`);
+
   /** Genera con voz sintética el audio de un blaster. Con `muestra`,
       solo uno de prueba para escucharlo antes de gastar en todos. */
   const generarAudioBlaster = (id, muestra) =>
@@ -740,7 +743,7 @@ const servicio = (() => {
     leerTabla, subirAudio, listarAudios,
     indicadoresDelDia, reporteLlamadas, reporteTipificaciones,
     listarFormulariosReporte, reporteFormulario, listarBlastersReporte, reporteBlaster,
-    generarAudioBlaster, gruposBlaster, blasterABase, reporteSesiones, exportarReporte,
+    generarAudioBlaster, gruposBlaster, blasterABase, escucharDestino, reporteSesiones, exportarReporte,
     listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
     eliminarTroncal, estadoTroncal,
     leerTipificador, guardarTipificador,

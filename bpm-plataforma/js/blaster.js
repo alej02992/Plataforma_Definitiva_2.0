@@ -472,12 +472,15 @@ const blaster = (() => {
               seguro.texto(fallos.slice(0, 3).map((f) => f.error).join(' · '))}` : ''}</div>`;
       }
 
-      /* El estado cambió: se vuelve a leer para que el panel lo refleje */
+      /* El estado cambió: se vuelve a leer para que el panel lo refleje,
+         y la tabla de destinatarios, para que aparezcan los botones de
+         escuchar de cada persona. */
       if (!muestra) {
         actual = await servicio.leerBlaster(actual.id);
         const res = $b('blAudioRes').innerHTML;
         pintarAprobacion();
         $b('blAudioRes').innerHTML = res;
+        await pintarDestinos();
       }
     } catch (err) {
       $b('blAudioRes').innerHTML =
@@ -635,18 +638,49 @@ const blaster = (() => {
       : f.estado === 'llamando' ? 'b'
       : (f.estado === 'pendiente' && !f.intentos) ? 'o' : 'a';
 
+    /* Con variables, cada persona escucha un mensaje distinto: se
+       muestra el texto armado con sus datos y un botón para oírlo.
+       Leyendo la columna se detecta un nombre mal escrito en el Excel
+       sin tener que escuchar los audios uno a uno. */
+    const conVariables = actual.tipo === 'variables';
+
     $b('blRevision').innerHTML = `<div style="overflow-x:auto"><table class="tb">
-      <tr><th>Número</th><th>Nombre</th><th>Estado</th><th>Intentos</th><th>Motivo</th></tr>
+      <tr><th>Número</th><th>Nombre</th><th>Estado</th><th>Intentos</th><th>Motivo</th>${
+        conVariables ? '<th>Lo que escucha</th><th>Audio</th>' : ''}</tr>
       ${filas.slice(0, 200).map((f) => `<tr>
         <td class="mono">${seguro.texto(f.numero)}</td>
         <td>${seguro.celda(f.nombre)}</td>
         <td><span class="t ${tono(f)}">${seguro.texto(estadoDe(f))}</span></td>
         <td class="mono">${seguro.texto(f.intentos ?? 0)}</td>
-        <td>${seguro.celda(f.ultimo_motivo)}</td>
+        <td>${seguro.celda(f.ultimo_motivo)}</td>${conVariables ? `
+        <td class="bl-msj">${seguro.celda(f.mensaje)}</td>
+        <td class="bl-oir-celda">${f.tieneAudio
+          ? `<button class="b b-gh b-sm" data-oir="${seguro.texto(f.id)}">▶ Escuchar</button>`
+          : '<span class="hint">Sin generar</span>'}</td>` : ''}
       </tr>`).join('')}</table>
       ${filas.length > 200 ? `<div class="hint">Se muestran los primeros 200 de ${filas.length}.</div>` : ''}
       </div>`;
   }
+
+  /* Escuchar el audio de una persona. Se pide solo al pulsar, y no gasta
+     créditos: es el audio ya generado. Al terminar de cargarlo, el botón
+     se reemplaza por el reproductor. */
+  $b('blRevision').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-oir]');
+    if (!btn || !actual) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Cargando…';
+    try {
+      const r = await servicio.escucharDestino(actual.id, btn.dataset.oir);
+      const celda = btn.closest('td');
+      celda.innerHTML = `<audio controls autoplay src="data:audio/wav;base64,${r.escuchar}"></audio>`;
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '▶ Escuchar';
+      aviso(err.message, 'av-a');
+    }
+  });
 
   $b('btnBlPlantilla').addEventListener('click', () => {
     /* La plantilla incluye las variables del mensaje, así el archivo
