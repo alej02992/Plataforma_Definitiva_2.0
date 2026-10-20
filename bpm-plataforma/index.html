@@ -1202,7 +1202,18 @@
           <div class="c-h"><h2>Usuarios</h2>
             <button class="b b-teal b-sm" id="btnUsrNuevo">Nuevo usuario</button></div>
           <p class="c-sub">Cambia el rol con un clic. El usuario lo ve al volver a
-            iniciar sesión.</p>
+            iniciar sesión. Marca las casillas para eliminar varios a la vez.</p>
+
+          <!-- Aparece al marcar usuarios: acciones sobre todos a la vez -->
+          <div class="usr-barra" id="usrBarra" style="display:none">
+            <span id="usrBarraTxt"></span>
+            <div class="ctrls" style="margin:0">
+              <button class="b b-red b-sm" id="btnUsrBajaVarios">Dar de baja</button>
+              <button class="b b-red b-sm" id="btnUsrBorrarVarios">Eliminar definitivamente</button>
+              <button class="b b-gh b-sm" id="btnUsrQuitarSel">Quitar selección</button>
+            </div>
+          </div>
+
           <div id="tablaUsuarios"></div>
         </div>
 
@@ -1247,23 +1258,26 @@
         </div>
         <div class="c">
           <div class="c-h"><h2>Distribución de agentes</h2>
-            <button class="b b-teal b-sm" id="btnMover">Mover a campaña</button></div>
-          <p class="c-sub">Selecciona uno o varios agentes con Ctrl o Shift y
-            reasígnalos según el flujo de llamadas.</p>
-          <div class="rej rej-2">
-            <div class="f" style="margin:0">
-              <label>Agentes</label>
-              <select class="fi lista-multi" id="selAgentes" multiple size="9"></select>
-            </div>
-            <div class="f" style="margin:0">
-              <label>Campaña de destino</label>
-              <select class="fi" id="selDestino"></select>
-              <div class="hint">El cambio se aplica al terminar la llamada en curso.</div>
-            </div>
+            <input class="fi" id="distBuscar" placeholder="Buscar agente…"
+                   style="max-width:220px;margin-left:auto" autocomplete="off"></div>
+          <p class="c-sub">Cada columna es una campaña con sus agentes. Marca los que
+            quieras mover, elige el destino y confirma.</p>
+
+          <div class="dist-cols" id="distCols"><div class="vacio">Cargando…</div></div>
+
+          <!-- Aparece al marcar agentes -->
+          <div class="dist-barra" id="distBarra" style="display:none">
+            <span id="distTxt"></span>
+            <span class="dist-flecha">→</span>
+            <select class="fi" id="selDestino" style="max-width:240px"></select>
+            <button class="b b-teal b-sm" id="btnMover">Mover</button>
+            <button class="b b-gh b-sm" id="btnDistLimpiar">Cancelar</button>
           </div>
+          <div class="hint" style="margin-top:6px">Si el agente está en una llamada, el
+            cambio se aplica al terminarla.</div>
         </div>
         <div class="c">
-          <div class="c-h"><h2>Alta masiva de usuarios</h2>
+          <div class="c-h"><h2>Carga masiva de usuarios</h2>
             <span class="t o" id="masN">—</span></div>
           <p class="c-sub">Para dar de alta muchas personas de una vez. Sube el archivo,
             revisa lo que se va a crear y confirma.</p>

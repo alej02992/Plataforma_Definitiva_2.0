@@ -78,35 +78,152 @@ const administracion = (() => {
       c.abierta ? 'av-b' : 'av-a');
   });
 
-  async function pintarDistribucion() {
-    const todos = await servicio.listarUsuarios();
-    const agentes = todos.filter((u) => u.rol === 'agente' && u.activo !== false);
+  /* ═══════════ DISTRIBUCIÓN DE AGENTES ═══════════
 
-    $$('selAgentes').innerHTML = agentes.map((a) =>
-      `<option value="${seguro.texto(a.id ?? a.usuario)}" data-usuario="${seguro.texto(a.usuario)}">${seguro.texto(a.nombre)} · ${seguro.texto(a.campana || 'sin campaña')}</option>`).join('');
+     Una columna por campaña, con sus agentes dentro. Antes era una lista
+     donde había que usar Ctrl o Shift para marcar varios, y no se veía
+     quién estaba en cada campaña. Ahora se marca con casillas y se ve el
+     reparto de un vistazo.                                             */
+
+  let agentesDist = [];
+  const marcadosDist = new Set();
+
+  async function pintarDistribucion() {
+    /* Las campañas se cargaban solo al visitar la vista de Campañas. Si
+       se entraba directo a Usuarios, no había columnas ni destinos. */
+    if (!campanas.length) {
+      try { campanas = await servicio.listarCampanas(); } catch { campanas = []; }
+    }
+    const todos = await servicio.listarUsuarios();
+    agentesDist = todos.filter((u) => u.rol === 'agente' && u.activo !== false);
+    dibujarColumnas();
+
     $$('selDestino').innerHTML = campanas.map((c) =>
       `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
   }
 
+  function dibujarColumnas() {
+    const filtro = String($$('distBuscar')?.value || '').trim().toLowerCase();
+
+    /* Las campañas, más una columna para los que no tienen ninguna */
+    const columnas = campanas.map((c) => ({ nombre: c.nombre, agentes: [] }));
+    const sinCampana = { nombre: 'Sin campaña', agentes: [], vacia: true };
+
+    agentesDist.forEach((a) => {
+      const col = columnas.find((c) => c.nombre === a.campana) || sinCampana;
+      col.agentes.push(a);
+    });
+    if (sinCampana.agentes.length) columnas.push(sinCampana);
+
+    const clave = (a) => String(a.id ?? a.usuario);
+    const coincide = (a) => !filtro ||
+      String(a.nombre).toLowerCase().includes(filtro) ||
+      String(a.usuario).toLowerCase().includes(filtro) ||
+      String(a.extension || '').includes(filtro);
+
+    if (!agentesDist.length) {
+      $$('distCols').innerHTML = '<div class="vacio">No hay agentes activos.</div>';
+      actualizarDist();
+      return;
+    }
+
+    $$('distCols').innerHTML = columnas.map((col) => {
+      const visibles = col.agentes.filter(coincide);
+      return `
+      <div class="dist-col${col.vacia ? ' dist-col-sin' : ''}">
+        <div class="dist-col-h">
+          <b>${seguro.texto(col.nombre)}</b>
+          <span class="t ${col.agentes.length ? 'b' : 'o'}">${col.agentes.length}</span>
+        </div>
+        ${col.agentes.length ? `
+          <label class="dist-todos"><input type="checkbox" data-col="${seguro.texto(col.nombre)}"
+            ${visibles.length && visibles.every((a) => marcadosDist.has(clave(a))) ? 'checked' : ''}>
+            Marcar todos</label>` : ''}
+        <div class="dist-lista">
+          ${visibles.map((a) => `
+            <label class="dist-ag${marcadosDist.has(clave(a)) ? ' on' : ''}">
+              <input type="checkbox" data-ag="${seguro.texto(clave(a))}"
+                ${marcadosDist.has(clave(a)) ? 'checked' : ''}>
+              <span class="dist-av">${seguro.texto(String(a.nombre || '?').trim().charAt(0).toUpperCase())}</span>
+              <span class="dist-bd"><b>${seguro.texto(a.nombre)}</b>
+                <small>${a.extension ? 'Ext. ' + seguro.texto(a.extension) : seguro.texto(a.usuario)}</small></span>
+            </label>`).join('') ||
+            `<div class="dist-vacia">${col.agentes.length ? 'Ninguno coincide' : 'Sin agentes'}</div>`}
+        </div>
+      </div>`;
+    }).join('');
+
+    actualizarDist();
+  }
+
+  function actualizarDist() {
+    const n = marcadosDist.size;
+    $$('distBarra').style.display = n ? '' : 'none';
+    $$('distTxt').textContent = `Mover ${n} agente${n === 1 ? '' : 's'}`;
+  }
+
+  $$('distCols')?.addEventListener('change', (e) => {
+    const ag = e.target.dataset.ag;
+    const col = e.target.dataset.col;
+
+    if (ag) {
+      if (e.target.checked) marcadosDist.add(ag); else marcadosDist.delete(ag);
+      e.target.closest('.dist-ag')?.classList.toggle('on', e.target.checked);
+      actualizarDist();
+    }
+    if (col) {
+      const filtro = String($$('distBuscar')?.value || '').trim().toLowerCase();
+      agentesDist
+        .filter((a) => (a.campana || 'Sin campaña') === col || (col === 'Sin campaña' &&
+                       !campanas.some((c) => c.nombre === a.campana)))
+        .filter((a) => !filtro || String(a.nombre).toLowerCase().includes(filtro) ||
+                       String(a.usuario).toLowerCase().includes(filtro))
+        .forEach((a) => {
+          const k = String(a.id ?? a.usuario);
+          if (e.target.checked) marcadosDist.add(k); else marcadosDist.delete(k);
+        });
+      dibujarColumnas();
+    }
+  });
+
+  $$('distBuscar')?.addEventListener('input', dibujarColumnas);
+
+  $$('btnDistLimpiar')?.addEventListener('click', () => {
+    marcadosDist.clear();
+    dibujarColumnas();
+  });
+
   $$('btnMover')?.addEventListener('click', async () => {
-    const sel = [...$$('selAgentes').selectedOptions];
-    if (!sel.length) { aviso('Selecciona al menos un agente.', 'av-a'); return; }
+    const lista = agentesDist.filter((a) => marcadosDist.has(String(a.id ?? a.usuario)));
+    if (!lista.length) return;
 
     const campanaId = Number($$('selDestino').value);
     const destino = $$('selDestino').selectedOptions[0]?.textContent || '';
 
-    let ok = 0;
-    for (const o of sel) {
-      const r = await servicio.cambiarCampanaRemoto(
-        Number(o.value) || null, o.dataset.usuario, campanaId, destino);
-      if (r.ok) ok++;
+    /* Los que ya están en esa campaña no se mueven: no hay nada que hacer */
+    const aMover = lista.filter((a) => a.campana !== destino);
+    if (!aMover.length) {
+      aviso(`Los agentes marcados ya están en ${destino}.`, 'av-a');
+      return;
     }
 
+    const btn = $$('btnMover');
+    btn.disabled = true;
+    let ok = 0;
+    for (const a of aMover) {
+      btn.textContent = `Moviendo ${ok + 1} de ${aMover.length}…`;
+      const r = await servicio.cambiarCampanaRemoto(Number(a.id) || null, a.usuario, campanaId, destino);
+      if (r.ok) ok++;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Mover';
+
+    marcadosDist.clear();
     await pintarDistribucion();
-    aviso(ok === sel.length
+    aviso(ok === aMover.length
       ? `${ok} agente(s) movido(s) a ${destino}.`
-      : `Se movieron ${ok} de ${sel.length}. Revisa los que fallaron.`,
-      ok === sel.length ? 'av-b' : 'av-a');
+      : `Se movieron ${ok} de ${aMover.length}. Revisa los que fallaron.`,
+      ok === aMover.length ? 'av-b' : 'av-a');
   });
 
   /* ═══════════════════════════════════════════════════════════════
@@ -616,14 +733,130 @@ const administracion = (() => {
     pintarUsuarios();
   }
 
+  /* ── Selección para eliminar varios ── */
+  const seleccion = new Set();
+
+  function actualizarBarra() {
+    /* Solo cuentan los que siguen en la lista */
+    [...seleccion].forEach((id) => { if (!usuarios.some((u) => String(u.id) === id)) seleccion.delete(id); });
+
+    const marcados = usuarios.filter((u) => seleccion.has(String(u.id)));
+    const activos = marcados.filter((u) => u.activo !== false);
+    const inactivos = marcados.filter((u) => u.activo === false);
+
+    $$('usrBarra').style.display = marcados.length ? '' : 'none';
+    $$('usrBarraTxt').textContent = `${marcados.length} seleccionado(s)`;
+
+    /* Dar de baja aplica a los activos; eliminar definitivamente, a los
+       ya dados de baja. Es la misma regla que la de uno en uno. */
+    $$('btnUsrBajaVarios').style.display = activos.length ? '' : 'none';
+    $$('btnUsrBajaVarios').textContent = `Dar de baja (${activos.length})`;
+    $$('btnUsrBorrarVarios').style.display = inactivos.length ? '' : 'none';
+    $$('btnUsrBorrarVarios').textContent = `Eliminar definitivamente (${inactivos.length})`;
+
+    const todos = $$('usrTodos');
+    if (todos) {
+      const marcables = usuarios.filter((u) => u.usuario !== ui.sesion?.usuario);
+      todos.checked = marcables.length > 0 && marcables.every((u) => seleccion.has(String(u.id)));
+    }
+  }
+
+  $$('tablaUsuarios')?.addEventListener('change', (e) => {
+    if (e.target.id === 'usrTodos') {
+      const marcar = e.target.checked;
+      usuarios.filter((u) => u.usuario !== ui.sesion?.usuario)
+        .forEach((u) => (marcar ? seleccion.add(String(u.id)) : seleccion.delete(String(u.id))));
+      $$('tablaUsuarios').querySelectorAll('[data-sel]').forEach((c) => { c.checked = marcar; });
+    } else if (e.target.dataset.sel) {
+      if (e.target.checked) seleccion.add(e.target.dataset.sel);
+      else seleccion.delete(e.target.dataset.sel);
+    } else {
+      return;
+    }
+    actualizarBarra();
+  });
+
+  $$('btnUsrQuitarSel')?.addEventListener('click', () => {
+    seleccion.clear();
+    pintarUsuarios();
+  });
+
+  /**
+   * Aplica una acción a varios usuarios, uno por uno.
+   *
+   * Usa las mismas rutas que los botones de cada fila, así que tiene las
+   * mismas protecciones: el servidor puede rechazar alguno —por ejemplo
+   * el último administrador— y los demás siguen. Al final se dice
+   * cuántos salieron bien y por qué fallaron los otros.
+   */
+  async function aplicarAVarios(lista, accion, verbo, boton) {
+    const original = boton.textContent;
+    boton.disabled = true;
+    let bien = 0;
+    const fallos = [];
+
+    for (let i = 0; i < lista.length; i++) {
+      const u = lista[i];
+      boton.textContent = `${verbo} ${i + 1} de ${lista.length}…`;
+      try {
+        const r = await accion(u.id);
+        if (r && r.ok === false) fallos.push(`${u.nombre}: ${r.error}`);
+        else { bien++; seleccion.delete(String(u.id)); }
+      } catch (err) {
+        fallos.push(`${u.nombre}: ${err.message}`);
+      }
+    }
+
+    boton.disabled = false;
+    boton.textContent = original;
+    await recargarUsuarios();
+
+    aviso(fallos.length
+      ? `${bien} de ${lista.length} listos. No se pudo con: ${fallos.slice(0, 3).join(' · ')}${
+          fallos.length > 3 ? ` y ${fallos.length - 3} más` : ''}`
+      : `${bien} usuario(s) listos.`,
+      fallos.length ? 'av-a' : 'av-b');
+  }
+
+  $$('btnUsrBajaVarios')?.addEventListener('click', async () => {
+    const lista = usuarios.filter((u) => seleccion.has(String(u.id)) && u.activo !== false);
+    if (!lista.length) return;
+    if (!confirm(`¿Dar de baja a ${lista.length} usuario(s)?\n\n` +
+                 lista.slice(0, 8).map((u) => '· ' + u.nombre).join('\n') +
+                 (lista.length > 8 ? `\n· y ${lista.length - 8} más` : '') +
+                 '\n\nDejarán de poder entrar y sus extensiones se liberarán. ' +
+                 'Su historial de llamadas se conserva.')) return;
+    await aplicarAVarios(lista, (id) => servicio.desactivarUsuario(id), 'Dando de baja', $$('btnUsrBajaVarios'));
+  });
+
+  $$('btnUsrBorrarVarios')?.addEventListener('click', async () => {
+    const lista = usuarios.filter((u) => seleccion.has(String(u.id)) && u.activo === false);
+    if (!lista.length) return;
+    if (!confirm(`¿Eliminar DEFINITIVAMENTE a ${lista.length} usuario(s)?\n\n` +
+                 lista.slice(0, 8).map((u) => '· ' + u.nombre).join('\n') +
+                 (lista.length > 8 ? `\n· y ${lista.length - 8} más` : '') +
+                 '\n\nDesaparecen de la lista. Sus llamadas y gestiones se conservan ' +
+                 'en los reportes, con su nombre.\n\nEsto no se puede deshacer.')) return;
+    await aplicarAVarios(lista, (id) => servicio.eliminarUsuarioDefinitivo(id), 'Eliminando',
+                         $$('btnUsrBorrarVarios'));
+  });
+
   function pintarUsuarios() {
     if (!usuarios.length) {
       $$('tablaUsuarios').innerHTML = '<div class="vacio">No hay usuarios registrados.</div>';
       return;
     }
+    /* Una casilla por usuario para eliminar varios a la vez. La propia
+       cuenta no se puede marcar: nadie debe poder darse de baja a sí
+       mismo y quedarse fuera de la plataforma. */
+    const yo = ui.sesion?.usuario;
+
     $$('tablaUsuarios').innerHTML = `<table class="tb">
-      <tr><th>Nombre</th><th>Usuario</th><th>Extensión</th><th>Campaña</th><th>Rol</th><th></th></tr>
+      <tr><th style="width:28px"><input type="checkbox" id="usrTodos" title="Marcar todos"></th>
+        <th>Nombre</th><th>Usuario</th><th>Extensión</th><th>Campaña</th><th>Rol</th><th></th></tr>
       ${usuarios.map((u) => `<tr${u.activo === false ? ' style="opacity:.5"' : ''}>
+        <td>${u.usuario === yo ? ''
+          : `<input type="checkbox" data-sel="${seguro.texto(u.id)}"${seleccion.has(String(u.id)) ? ' checked' : ''}>`}</td>
         <td><b>${seguro.texto(u.nombre)}</b>${u.activo === false ? ' <span class="t o">Inactivo</span>' : ''}</td>
         <td class="mono">${seguro.texto(u.usuario)}</td>
         <td class="mono">${seguro.celda(u.extension)}</td>
@@ -646,6 +879,7 @@ const administracion = (() => {
                 : `<button class="b b-red b-sm" data-baja="${seguro.texto(u.id)}" title="El usuario deja de entrar; su historial se conserva">Eliminar</button>`)}
         </td>
       </tr>`).join('')}</table>`;
+    actualizarBarra();
   }
 
   /* ── Eliminar definitivamente ──
