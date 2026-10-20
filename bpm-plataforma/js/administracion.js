@@ -840,22 +840,8 @@ const administracion = (() => {
       return;
     }
 
-    /* Se busca por usuario, que es único. Si el archivo no trae esa
-       columna, se intenta con la primera que tenga. */
-    const valores = (filas || []).map((f) => {
-      const v = f.usuario ?? f.Usuario ?? f.USUARIO ?? Object.values(f)[0];
-      return String(v ?? '').trim().toLowerCase();
-    }).filter(Boolean);
-
-    const encontrados = [];
-    const noEstan = [];
-    const yoMismo = ui.sesion?.usuario;
-
-    [...new Set(valores)].forEach((v) => {
-      const u = usuarios.find((x) => String(x.usuario).toLowerCase() === v);
-      if (!u) noEstan.push(v);
-      else if (u.usuario !== yoMismo) encontrados.push(u);
-    });
+    const r = buscarEnArchivo(filas);
+    const encontrados = r.encontrados;
 
     encontrados.forEach((u) => seleccion.add(String(u.id)));
 
@@ -866,12 +852,88 @@ const administracion = (() => {
     verTodos = true;
     pintarUsuarios();
 
-    $$('usrSelRes').innerHTML = `<div class="aviso ${noEstan.length ? 'av-a' : 'av-b'}"><div>
-      Se marcaron <b>${encontrados.length}</b> usuario(s) del archivo.${noEstan.length
-        ? ` <b>${noEstan.length}</b> no existen en la plataforma: ${
-            seguro.texto(noEstan.slice(0, 6).join(', '))}${noEstan.length > 6 ? '…' : ''}` : ''}
-      ${encontrados.length ? 'Revisa la lista y usa la barra para eliminarlos.' : ''}</div></div>`;
+    $$('usrSelRes').innerHTML = `<div class="aviso av-b"><div>
+      Se marcaron <b>${encontrados.length}</b> usuario(s) del archivo.
+      ${encontrados.length ? 'Revisa la lista y usa la barra para eliminarlos.' : ''}</div></div>` +
+      avisosDeArchivo(r);
   });
+
+  /* ═══════════ ENCONTRAR A LAS PERSONAS DE UN ARCHIVO ═══════════
+
+     Los archivos de Recursos Humanos no siempre traen lo mismo: unos
+     traen el usuario, otros solo el nombre, otros el correo. Basta con
+     UNO de esos tres. Se busca en ese orden, del más seguro al menos:
+
+       usuario  es único: no hay duda.
+       correo   casi siempre único.
+       nombre   puede repetirse —dos "Juan Pérez"—. Si pasa, se usan la
+                extensión, la campaña y el rol para saber cuál es. Si aun
+                así no se distingue, NO se elige a ninguno: se avisa.
+
+     La extensión, la campaña y el rol son opcionales. Solo sirven para
+     desempatar nombres; si están desactualizados, no estorban.         */
+
+  const sinTildes = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+
+  function buscarEnArchivo(filas) {
+    const yoMismo = ui.sesion?.usuario;
+    const resultado = { encontrados: [], noEstan: [], ambiguos: [], sinDatos: 0, esYo: false };
+    const vistos = new Set();
+
+    for (const fila of filas || []) {
+      /* Los nombres de columna, sin importar mayúsculas ni tildes */
+      const f = {};
+      Object.entries(fila || {}).forEach(([k, v]) => { f[sinTildes(k)] = String(v ?? '').trim(); });
+
+      const usuario = f.usuario, correo = f.correo || f.email, nombre = f.nombre;
+      if (!usuario && !correo && !nombre) {
+        if (Object.values(f).some(Boolean) && !Object.keys(f).includes('sep=;')) resultado.sinDatos++;
+        continue;
+      }
+
+      let u = null, por = '';
+      if (usuario) {
+        u = usuarios.find((x) => sinTildes(x.usuario) === sinTildes(usuario)); por = 'usuario';
+      }
+      if (!u && correo) {
+        u = usuarios.find((x) => x.correo && sinTildes(x.correo) === sinTildes(correo)); por = 'correo';
+      }
+      if (!u && nombre) {
+        let candidatos = usuarios.filter((x) => sinTildes(x.nombre) === sinTildes(nombre));
+        /* Desempate con los datos opcionales, uno por uno */
+        for (const [campo, valor] of [['extension', f.extension], ['campana', f.campana], ['rol', f.rol]]) {
+          if (candidatos.length > 1 && valor) {
+            const quedan = candidatos.filter((x) => sinTildes(x[campo]) === sinTildes(valor));
+            if (quedan.length) candidatos = quedan;
+          }
+        }
+        if (candidatos.length > 1) { resultado.ambiguos.push(nombre); continue; }
+        u = candidatos[0] || null; por = 'nombre';
+      }
+
+      if (!u) { resultado.noEstan.push(usuario || correo || nombre); continue; }
+      if (u.usuario === yoMismo) { resultado.esYo = true; continue; }
+      if (vistos.has(u.id)) continue;            // repetido en el archivo
+      vistos.add(u.id);
+      resultado.encontrados.push({ ...u, encontradoPor: por });
+    }
+    return resultado;
+  }
+
+  /* Los avisos de lo que no se pudo encontrar, iguales en los dos sitios */
+  function avisosDeArchivo(r) {
+    const caja = (txt) => `<div class="aviso av-a" style="margin-top:10px"><div>${txt}</div></div>`;
+    return [
+      r.noEstan.length && caja(`<b>${r.noEstan.length}</b> no existen en la plataforma y se ignoran: ${
+        seguro.texto(r.noEstan.slice(0, 8).join(', '))}${r.noEstan.length > 8 ? '…' : ''}`),
+      r.ambiguos.length && caja(`<b>${r.ambiguos.length}</b> nombre(s) coinciden con varias personas y no se
+        eligió a ninguna, para no equivocarse: ${seguro.texto(r.ambiguos.slice(0, 5).join(', '))}.
+        Agrega su usuario, correo o extensión en el archivo.`),
+      r.sinDatos && caja(`<b>${r.sinDatos}</b> fila(s) no traen usuario, nombre ni correo y se ignoran.`),
+      r.esYo && caja('Tu propia cuenta venía en el archivo y se dejó fuera: nadie puede eliminarse a sí mismo.'),
+    ].filter(Boolean).join('');
+  }
 
   /* ═══════════ ELIMINACIÓN MASIVA POR ARCHIVO ═══════════
      Lo mismo que la carga masiva, al revés: se sube la lista, se ve a
@@ -898,42 +960,30 @@ const administracion = (() => {
       return;
     }
 
-    const valores = [...new Set((filas || []).map((f) => {
-      const v = f.usuario ?? f.Usuario ?? f.USUARIO ?? Object.values(f)[0];
-      return String(v ?? '').trim().toLowerCase();
-    }).filter((v) => v && v !== 'sep=;'))];
-
-    const yoMismo = ui.sesion?.usuario;
-    const noEstan = [];
-    let esYo = false;
-
-    valores.forEach((v) => {
-      const u = usuarios.find((x) => String(x.usuario).toLowerCase() === v);
-      if (!u) noEstan.push(v);
-      else if (u.usuario === yoMismo) esYo = true;
-      else porEliminar.push(u);
-    });
+    const r = buscarEnArchivo(filas);
+    porEliminar = r.encontrados;
 
     $$('emaN').textContent = porEliminar.length ? `${porEliminar.length} por eliminar` : '—';
     $$('emaEliminar').style.display = porEliminar.length ? '' : 'none';
     $$('emaEliminar').textContent = `Eliminar ${porEliminar.length} usuario(s)`;
 
+    const POR = { usuario: 'Usuario', correo: 'Correo', nombre: 'Nombre' };
     $$('emaResultado').innerHTML = `
       ${porEliminar.length ? `<div style="overflow-x:auto"><table class="tb">
-        <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Campaña</th><th>Estado</th></tr>
+        <tr><th>Nombre</th><th>Usuario</th><th>Correo</th><th>Rol</th><th>Campaña</th><th>Estado</th>
+          <th title="Con qué dato del archivo se encontró">Encontrado por</th></tr>
         ${porEliminar.map((u) => `<tr>
           <td><b>${seguro.texto(u.nombre)}</b></td>
           <td class="mono">${seguro.texto(u.usuario)}</td>
+          <td>${seguro.celda(u.correo)}</td>
           <td>${seguro.texto(ROL_ET[u.rol] || u.rol)}</td>
           <td>${seguro.celda(u.campana)}</td>
           <td><span class="t ${u.activo === false ? 'o' : 'g'}">${u.activo === false ? 'De baja' : 'Activo'}</span></td>
+          <td><span class="t ${u.encontradoPor === 'nombre' ? 'a' : 'b'}">${POR[u.encontradoPor]}</span></td>
         </tr>`).join('')}</table></div>` : ''}
-      ${noEstan.length ? `<div class="aviso av-a" style="margin-top:10px"><div>
-        <b>${noEstan.length}</b> no existen en la plataforma y se ignoran:
-        ${seguro.texto(noEstan.slice(0, 8).join(', '))}${noEstan.length > 8 ? '…' : ''}</div></div>` : ''}
-      ${esYo ? `<div class="aviso av-a" style="margin-top:10px"><div>Tu propia cuenta venía en el
-        archivo y se dejó fuera: nadie puede eliminarse a sí mismo.</div></div>` : ''}
-      ${!porEliminar.length && !noEstan.length ? '<div class="vacio">El archivo no trae usuarios.</div>' : ''}`;
+      ${avisosDeArchivo(r)}
+      ${!porEliminar.length && !r.noEstan.length && !r.ambiguos.length
+        ? '<div class="vacio">El archivo no trae usuarios.</div>' : ''}`;
   });
 
   $$('emaEliminar')?.addEventListener('click', async () => {
@@ -953,7 +1003,16 @@ const administracion = (() => {
   });
 
   $$('emaPlantilla')?.addEventListener('click', () => {
-    const ejemplo = ['sep=;', 'usuario', 'jperez', 'mlopez'].join('\r\n');
+    /* Las mismas seis columnas que la carga masiva. Basta con llenar UNA
+       de las tres primeras; las otras son opcionales y solo ayudan a
+       distinguir a dos personas con el mismo nombre. */
+    const ejemplo = [
+      'sep=;',
+      COLUMNAS.join(';'),
+      'jperez;Juan Pérez;jperez@bpmconsulting.com.co;1101;Ventas;agente',
+      ';María López;;;;',
+      ';;csoto@bpmconsulting.com.co;;;',
+    ].join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\ufeff' + ejemplo], { type: 'text/csv;charset=utf-8' }));
     a.download = 'plantilla_eliminar_usuarios.csv';
