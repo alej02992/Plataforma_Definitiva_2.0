@@ -738,34 +738,22 @@ const administracion = (() => {
 
   let usuarios = [];        // lo que se está mostrando
 
-  /* ── Apartados plegables ──
-     Al entrar se ven los tres títulos con su número; se despliega el que
-     se va a usar. Así la página no se vuelve eterna con muchos usuarios.
-     Lo abierto se recuerda mientras dure la sesión. */
-  const abiertos = new Set();
+  /* ── Vista previa de usuarios ──
+     La lista muestra los primeros y un botón para ver todos. Así la
+     página no se vuelve eterna con cincuenta usuarios, pero tampoco
+     queda vacía: siempre se ve algo. */
+  const PREVIA = 5;
+  let verTodos = false;
 
-  function aplicarPlegables() {
-    document.querySelectorAll('[data-v="usuarios"] .plegable').forEach((c) => {
-      const abierto = abiertos.has(c.dataset.pleg);
-      c.classList.toggle('abierto', abierto);
-      const f = c.querySelector('.pleg-f');
-      if (f) f.textContent = abierto ? '▾' : '▸';
-    });
-  }
-
-  document.querySelectorAll('[data-v="usuarios"] .plegable .pleg-t').forEach((b) => {
-    b.addEventListener('click', () => {
-      const id = b.closest('.plegable').dataset.pleg;
-      if (abiertos.has(id)) abiertos.delete(id); else abiertos.add(id);
-      aplicarPlegables();
-    });
+  $$('btnUsrVerTodos')?.addEventListener('click', () => {
+    verTodos = !verTodos;
+    pintarUsuarios();
   });
 
-  /* "Nuevo usuario" despliega la lista, para que se vea el resultado */
-  $$('btnUsrNuevo')?.addEventListener('click', () => { abiertos.add('usuarios'); aplicarPlegables(); });
+  /* "Nuevo usuario" muestra la lista completa, para ver el resultado */
+  $$('btnUsrNuevo')?.addEventListener('click', () => { verTodos = true; });
 
   async function abrirUsuarios() {
-    aplicarPlegables();
     await pintarDistribucion();
     const cs = await servicio.listarCampanas();
     $$('usrCampana').innerHTML = cs.map((c) =>
@@ -875,8 +863,7 @@ const administracion = (() => {
     $$('usrBuscar').value = '';
     $$('usrFiltroEstado').value = '';
     $$('usrFiltroRol').value = '';
-    abiertos.add('usuarios');
-    aplicarPlegables();
+    verTodos = true;
     pintarUsuarios();
 
     $$('usrSelRes').innerHTML = `<div class="aviso ${noEstan.length ? 'av-a' : 'av-b'}"><div>
@@ -884,6 +871,93 @@ const administracion = (() => {
         ? ` <b>${noEstan.length}</b> no existen en la plataforma: ${
             seguro.texto(noEstan.slice(0, 6).join(', '))}${noEstan.length > 6 ? '…' : ''}` : ''}
       ${encontrados.length ? 'Revisa la lista y usa la barra para eliminarlos.' : ''}</div></div>`;
+  });
+
+  /* ═══════════ ELIMINACIÓN MASIVA POR ARCHIVO ═══════════
+     Lo mismo que la carga masiva, al revés: se sube la lista, se ve a
+     quién se va a eliminar, y se confirma. Nada se borra al subir.    */
+
+  let porEliminar = [];
+
+  $$('emaArchivo')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    e.target.value = '';
+
+    porEliminar = [];
+    $$('emaEliminar').style.display = 'none';
+    $$('emaResultado').innerHTML = '<div class="vacio">Leyendo el archivo…</div>';
+
+    let filas;
+    try {
+      ({ filas } = await servicio.leerTabla(archivo));
+      usuarios = await servicio.listarUsuarios();          // la lista más reciente
+    } catch (err) {
+      $$('emaN').textContent = '—';
+      $$('emaResultado').innerHTML = `<div class="aviso av-r"><div>${seguro.texto(err.message)}</div></div>`;
+      return;
+    }
+
+    const valores = [...new Set((filas || []).map((f) => {
+      const v = f.usuario ?? f.Usuario ?? f.USUARIO ?? Object.values(f)[0];
+      return String(v ?? '').trim().toLowerCase();
+    }).filter((v) => v && v !== 'sep=;'))];
+
+    const yoMismo = ui.sesion?.usuario;
+    const noEstan = [];
+    let esYo = false;
+
+    valores.forEach((v) => {
+      const u = usuarios.find((x) => String(x.usuario).toLowerCase() === v);
+      if (!u) noEstan.push(v);
+      else if (u.usuario === yoMismo) esYo = true;
+      else porEliminar.push(u);
+    });
+
+    $$('emaN').textContent = porEliminar.length ? `${porEliminar.length} por eliminar` : '—';
+    $$('emaEliminar').style.display = porEliminar.length ? '' : 'none';
+    $$('emaEliminar').textContent = `Eliminar ${porEliminar.length} usuario(s)`;
+
+    $$('emaResultado').innerHTML = `
+      ${porEliminar.length ? `<div style="overflow-x:auto"><table class="tb">
+        <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Campaña</th><th>Estado</th></tr>
+        ${porEliminar.map((u) => `<tr>
+          <td><b>${seguro.texto(u.nombre)}</b></td>
+          <td class="mono">${seguro.texto(u.usuario)}</td>
+          <td>${seguro.texto(ROL_ET[u.rol] || u.rol)}</td>
+          <td>${seguro.celda(u.campana)}</td>
+          <td><span class="t ${u.activo === false ? 'o' : 'g'}">${u.activo === false ? 'De baja' : 'Activo'}</span></td>
+        </tr>`).join('')}</table></div>` : ''}
+      ${noEstan.length ? `<div class="aviso av-a" style="margin-top:10px"><div>
+        <b>${noEstan.length}</b> no existen en la plataforma y se ignoran:
+        ${seguro.texto(noEstan.slice(0, 8).join(', '))}${noEstan.length > 8 ? '…' : ''}</div></div>` : ''}
+      ${esYo ? `<div class="aviso av-a" style="margin-top:10px"><div>Tu propia cuenta venía en el
+        archivo y se dejó fuera: nadie puede eliminarse a sí mismo.</div></div>` : ''}
+      ${!porEliminar.length && !noEstan.length ? '<div class="vacio">El archivo no trae usuarios.</div>' : ''}`;
+  });
+
+  $$('emaEliminar')?.addEventListener('click', async () => {
+    if (!porEliminar.length) return;
+    if (!confirm(`¿Eliminar DEFINITIVAMENTE a ${porEliminar.length} usuario(s)?\n\n` +
+                 porEliminar.slice(0, 8).map((u) => '· ' + u.nombre).join('\n') +
+                 (porEliminar.length > 8 ? `\n· y ${porEliminar.length - 8} más` : '') +
+                 '\n\nSus llamadas y gestiones se conservan en los reportes, con su nombre.' +
+                 '\n\nEsto no se puede deshacer.')) return;
+
+    await aplicarAVarios(porEliminar, eliminarDelTodo, 'Eliminando', $$('emaEliminar'));
+
+    porEliminar = [];
+    $$('emaEliminar').style.display = 'none';
+    $$('emaN').textContent = '—';
+    $$('emaResultado').innerHTML = '<div class="vacio">Listo. Puedes subir otro archivo.</div>';
+  });
+
+  $$('emaPlantilla')?.addEventListener('click', () => {
+    const ejemplo = ['sep=;', 'usuario', 'jperez', 'mlopez'].join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + ejemplo], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'plantilla_eliminar_usuarios.csv';
+    document.body.appendChild(a); a.click(); a.remove();
   });
 
   $$('btnUsrQuitarSel')?.addEventListener('click', () => {
@@ -930,6 +1004,18 @@ const administracion = (() => {
       fallos.length ? 'av-a' : 'av-b');
   }
 
+  /* Elimina del todo. A los activos se les da de baja primero: el
+     borrado definitivo, por diseño, solo aplica a usuarios de baja. Lo
+     usan la barra de selección y la eliminación por archivo. */
+  async function eliminarDelTodo(id) {
+    const u = usuarios.find((x) => String(x.id) === String(id));
+    if (u && u.activo !== false) {
+      const r = await servicio.desactivarUsuario(id);
+      if (r && r.ok === false) return r;
+    }
+    return servicio.eliminarUsuarioDefinitivo(id);
+  }
+
   $$('btnUsrBajaVarios')?.addEventListener('click', async () => {
     const lista = usuarios.filter((u) => seleccion.has(String(u.id)) && u.activo !== false);
     if (!lista.length) return;
@@ -949,16 +1035,7 @@ const administracion = (() => {
                  (lista.length > 8 ? `\n· y ${lista.length - 8} más` : '') +
                  '\n\nDesaparecen de la lista. Sus llamadas y gestiones se conservan ' +
                  'en los reportes, con su nombre.\n\nEsto no se puede deshacer.')) return;
-    /* A los activos se les da de baja y se eliminan en seguida: el
-       borrado definitivo, por diseño, solo aplica a usuarios de baja. */
-    await aplicarAVarios(lista, async (id) => {
-      const u = usuarios.find((x) => String(x.id) === String(id));
-      if (u && u.activo !== false) {
-        const r = await servicio.desactivarUsuario(id);
-        if (r && r.ok === false) return r;
-      }
-      return servicio.eliminarUsuarioDefinitivo(id);
-    }, 'Eliminando', $$('btnUsrBorrarVarios'));
+    await aplicarAVarios(lista, eliminarDelTodo, 'Eliminando', $$('btnUsrBorrarVarios'));
   });
 
   /** Los usuarios que pasan el buscador y los filtros. */
@@ -991,11 +1068,25 @@ const administracion = (() => {
       return;
     }
 
-    const lista = filtrados();
-    if (!lista.length) {
+    const todosFiltrados = filtrados();
+    if (!todosFiltrados.length) {
       $$('tablaUsuarios').innerHTML = '<div class="vacio">Ningún usuario coincide con la búsqueda.</div>';
+      $$('btnUsrVerTodos').style.display = 'none';
       actualizarBarra();
       return;
+    }
+
+    /* Al buscar se ven todos los que coinciden: si no, alguien podría
+       estar escondido detrás del botón. */
+    const buscando = String($$('usrBuscar')?.value || '').trim() !== '';
+    const lista = (verTodos || buscando) ? todosFiltrados : todosFiltrados.slice(0, PREVIA);
+
+    const boton = $$('btnUsrVerTodos');
+    if (todosFiltrados.length > PREVIA && !buscando) {
+      boton.style.display = '';
+      boton.textContent = verTodos ? 'Ver menos ▴' : `Ver los ${todosFiltrados.length} usuarios ▾`;
+    } else {
+      boton.style.display = 'none';
     }
     /* Una casilla por usuario para eliminar varios a la vez. La propia
        cuenta no se puede marcar: nadie debe poder darse de baja a sí

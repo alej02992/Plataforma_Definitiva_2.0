@@ -1198,10 +1198,9 @@
 
       <!-- ══════ USUARIOS Y ROLES · superadmin ══════ -->
       <section class="vista" data-v="usuarios">
-        <div class="c plegable" data-pleg="usuarios">
+        <div class="c">
           <div class="c-h">
-            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Usuarios</h2>
-              <span class="t b" id="usrTotal">—</span></button>
+            <div class="c-tit"><h2>Usuarios</h2><span class="t b" id="usrTotal">—</span></div>
             <button class="b b-teal b-sm" id="btnUsrNuevo">Nuevo usuario</button></div>
           <div class="pleg-cuerpo">
           <p class="c-sub">Cambia el rol con un clic. El usuario lo ve al volver a
@@ -1238,6 +1237,8 @@
           </div>
 
           <div id="tablaUsuarios"></div>
+          <!-- Vista previa: los primeros; el botón muestra todos -->
+          <button class="ver-todos" type="button" id="btnUsrVerTodos" style="display:none"></button>
           </div>
         </div>
 
@@ -1280,10 +1281,9 @@
             <button class="b b-gh b-sm" id="btnUsrCancel">Cancelar</button>
           </div>
         </div>
-        <div class="c plegable" data-pleg="distribucion">
+        <div class="c">
           <div class="c-h">
-            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Distribución de agentes</h2>
-              <span class="t b" id="distTotal">—</span></button>
+            <div class="c-tit"><h2>Distribución de agentes</h2><span class="t b" id="distTotal">—</span></div>
             <input class="fi" id="distBuscar" placeholder="Buscar agente…"
                    style="max-width:220px;margin-left:auto" autocomplete="off"></div>
           <div class="pleg-cuerpo">
@@ -1304,10 +1304,9 @@
             cambio se aplica al terminarla.</div>
           </div>
         </div>
-        <div class="c plegable" data-pleg="carga">
+        <div class="c">
           <div class="c-h">
-            <button class="pleg-t" type="button"><span class="pleg-f">▸</span><h2>Carga masiva de usuarios</h2>
-              <span class="t o" id="masN">—</span></button></div>
+            <div class="c-tit"><h2>Carga masiva de usuarios</h2><span class="t o" id="masN">—</span></div></div>
           <div class="pleg-cuerpo">
           <p class="c-sub">Para dar de alta muchas personas de una vez. Sube el archivo,
             revisa lo que se va a crear y confirma.</p>
@@ -1323,6 +1322,25 @@
 
           <div id="masResultado"><div class="vacio">Aún no has subido ningún archivo.</div></div>
           </div>
+        </div>
+
+        <!-- ══ Eliminación masiva: lo mismo que la carga, al revés ══ -->
+        <div class="c">
+          <div class="c-h"><div class="c-tit"><h2>Eliminación masiva de usuarios</h2>
+            <span class="t o" id="emaN">—</span></div></div>
+          <p class="c-sub">Para cuando llega una lista de personas que salieron. Sube el
+            archivo, revisa a quién se va a eliminar y confirma.</p>
+
+          <div class="ctrls" style="margin-bottom:10px">
+            <label class="b b-gh" style="cursor:pointer">
+              Elegir archivo
+              <input type="file" id="emaArchivo" accept=".csv,.txt,.xlsx,.xls" style="display:none">
+            </label>
+            <button class="b b-red" id="emaEliminar" style="display:none">Eliminar</button>
+            <button class="b b-gh" id="emaPlantilla">Descargar plantilla</button>
+          </div>
+
+          <div id="emaResultado"><div class="vacio">Aún no has subido ningún archivo.</div></div>
         </div>
       </section>
 

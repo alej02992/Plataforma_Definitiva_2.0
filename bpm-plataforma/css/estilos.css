@@ -832,55 +832,15 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .dist-barra span:first-child{font-weight:700;color:var(--ink)}
 .dist-flecha{color:var(--ink-3);font-weight:700}
 
-/* ══════════ USUARIOS · selección para eliminar varios ══════════ */
-.usr-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  padding:9px 12px;margin-bottom:10px;border-radius:9px;background:var(--danger-l, #FDECEC);
-  border:1px solid var(--danger, #D64545)}
-.usr-barra span{font-weight:700;color:var(--ink)}
-#tablaUsuarios input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+/* ══════════ USUARIOS · títulos con su número ══════════ */
+.c-tit{display:flex;align-items:center;gap:9px;min-width:0}
+.c-tit h2{margin:0}
 
-/* ══════════ DISTRIBUCIÓN DE AGENTES · una columna por campaña ══════════ */
-.dist-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.dist-col{border:1px solid var(--line);border-radius:11px;background:var(--soft);
-  display:flex;flex-direction:column;min-height:120px;overflow:hidden}
-.dist-col-sin{border-style:dashed}
-.dist-col-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:10px 12px;background:#fff;border-bottom:1px solid var(--line)}
-.dist-col-h b{font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dist-todos{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);
-  padding:7px 12px 2px;cursor:pointer}
-.dist-lista{display:flex;flex-direction:column;gap:5px;padding:7px 9px 10px;max-height:280px;overflow-y:auto}
-.dist-ag{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;background:#fff;
-  border:1px solid transparent;cursor:pointer;transition:border-color .12s,background .12s}
-.dist-ag:hover{border-color:var(--line)}
-.dist-ag.on{border-color:var(--secondary);background:var(--secondary-l)}
-.dist-ag input{width:15px;height:15px;flex:none;cursor:pointer}
-.dist-av{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
-  background:var(--secondary-l);color:var(--secondary-d);font-weight:800;font-size:12.5px}
-.dist-ag.on .dist-av{background:var(--secondary);color:#fff}
-.dist-bd{display:flex;flex-direction:column;min-width:0}
-.dist-bd b{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dist-bd small{font-size:11px;color:var(--ink-3)}
-.dist-vacia{font-size:12px;color:var(--ink-3);text-align:center;padding:14px 4px}
-.dist-barra{position:sticky;bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  margin-top:12px;padding:10px 14px;border-radius:11px;background:#fff;
-  border:1px solid var(--secondary);box-shadow:0 6px 18px rgba(0,46,68,.12)}
-.dist-barra span:first-child{font-weight:700;color:var(--ink)}
-.dist-flecha{color:var(--ink-3);font-weight:700}
-
-/* ══════════ USUARIOS · apartados plegables ══════════ */
-.plegable > .c-h{margin-bottom:0}
-.plegable.abierto > .c-h{margin-bottom:10px}
-.plegable .pleg-cuerpo{display:none}
-.plegable.abierto .pleg-cuerpo{display:block}
-.pleg-t{display:flex;align-items:center;gap:9px;background:none;border:0;padding:0;
-  cursor:pointer;font:inherit;color:inherit;text-align:left}
-.pleg-t h2{margin:0}
-.pleg-f{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;
-  background:var(--secondary-l);color:var(--secondary-d);font-size:12px;flex:none}
-.pleg-t:hover .pleg-f{background:var(--secondary);color:#fff}
-/* El buscador de la distribución solo tiene sentido abierto */
-.plegable:not(.abierto) #distBuscar{display:none}
+/* ══════════ USUARIOS · vista previa ══════════ */
+.ver-todos{display:block;width:100%;margin-top:8px;padding:8px;border:1px dashed var(--line);
+  border-radius:9px;background:var(--soft);color:var(--secondary-d);font-weight:700;
+  font-size:12.5px;cursor:pointer}
+.ver-todos:hover{border-color:var(--secondary);background:var(--secondary-l)}
 
 /* ══════════ USUARIOS · buscador y filtros ══════════ */
 .usr-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
