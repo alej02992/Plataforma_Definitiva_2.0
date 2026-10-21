@@ -852,3 +852,28 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .dist-mas{margin:0 9px 10px;padding:6px;border:1px dashed var(--line);border-radius:8px;
   background:#fff;color:var(--secondary-d);font-weight:700;font-size:12px;cursor:pointer}
 .dist-mas:hover{border-color:var(--secondary);background:var(--secondary-l)}
+
+/* ══════════ FLUJOS IVR · vista previa ══════════ */
+.ivr-demo{display:flex;flex-direction:column;align-items:center;padding:18px 10px 6px;
+  background:var(--soft);border:1px solid var(--line);border-radius:12px}
+.ivr-nodo{min-width:220px;max-width:320px;padding:10px 14px;border-radius:10px;background:#fff;
+  border:1px solid var(--line);text-align:center;box-shadow:0 2px 6px rgba(0,46,68,.06)}
+.ivr-nodo b{display:block;font-size:13.5px;color:var(--ink)}
+.ivr-nodo small{display:block;font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.ivr-ini{background:var(--secondary);border-color:var(--secondary)}
+.ivr-ini b,.ivr-ini small{color:#fff}
+.ivr-menu{border-color:var(--secondary);border-width:2px}
+.ivr-linea{width:2px;height:20px;background:var(--line)}
+.ivr-ramas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:20px;padding-top:14px;
+  border-top:2px solid var(--line)}
+.ivr-rama{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ivr-tecla{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;
+  background:var(--secondary-l);color:var(--secondary-d);font-weight:800;font-size:13px}
+.ivr-fin{min-width:140px}
+.ivr-pasos{display:flex;flex-direction:column;gap:8px}
+.ivr-paso{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.ivr-paso > span{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+  background:var(--soft);color:var(--ink-3);font-weight:800;border:1px solid var(--line)}
+.ivr-paso.ok > span{background:var(--ok);color:#fff;border-color:var(--ok)}
+.ivr-paso b{display:block;font-size:13.5px;color:var(--ink)}
+.ivr-paso small{font-size:12px;color:var(--ink-3)}

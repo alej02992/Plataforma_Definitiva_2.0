@@ -1405,6 +1405,44 @@
 
       <!-- ══════ MÓDULOS · superadmin ══════ -->
       <!-- ══════ TRONCALES ══════ -->
+      <!-- ══════ FLUJOS IVR ══════
+           Por ahora solo la vista. El diseñador de flujos se construye
+           cuando estén las troncales y el número de entrada (DID). -->
+      <section class="vista" data-v="ivr">
+        <div class="c">
+          <div class="c-h"><div class="c-tit"><h2>Flujos IVR</h2>
+            <span class="t o">En construcción</span></div></div>
+          <p class="c-sub">El recorrido que hace una llamada al entrar: el saludo, el menú
+            de opciones y a dónde va según lo que marque el cliente.</p>
+
+          <!-- Un ejemplo de cómo se verá un flujo -->
+          <div class="ivr-demo">
+            <div class="ivr-nodo ivr-ini"><b>Llamada entra</b><small>Número de la empresa</small></div>
+            <div class="ivr-linea"></div>
+            <div class="ivr-nodo"><b>Bienvenida</b><small>"Gracias por llamar a BPM Consulting"</small></div>
+            <div class="ivr-linea"></div>
+            <div class="ivr-nodo ivr-menu"><b>Menú</b><small>"Marque 1 para ventas, 2 para soporte"</small></div>
+            <div class="ivr-ramas">
+              <div class="ivr-rama"><span class="ivr-tecla">1</span><div class="ivr-nodo ivr-fin"><b>Cola de Ventas</b></div></div>
+              <div class="ivr-rama"><span class="ivr-tecla">2</span><div class="ivr-nodo ivr-fin"><b>Cola de Soporte</b></div></div>
+              <div class="ivr-rama"><span class="ivr-tecla">0</span><div class="ivr-nodo ivr-fin"><b>Un agente</b></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Lo que hace falta</h2></div>
+          <div class="ivr-pasos">
+            <div class="ivr-paso ok"><span>✓</span><div><b>Troncales</b>
+              <small>El enlace con el operador, para recibir llamadas.</small></div></div>
+            <div class="ivr-paso"><span>2</span><div><b>Número de entrada (DID)</b>
+              <small>El número al que llaman los clientes. Lo asigna el operador.</small></div></div>
+            <div class="ivr-paso"><span>3</span><div><b>Diseñador de flujos</b>
+              <small>Armar el recorrido de la llamada desde esta pantalla.</small></div></div>
+          </div>
+        </div>
+      </section>
+
       <section class="vista" data-v="troncales">
         <div class="c">
           <div class="c-h"><h2>Troncales</h2>
