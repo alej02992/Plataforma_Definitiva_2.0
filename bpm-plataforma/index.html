@@ -1464,6 +1464,14 @@
           <div id="trkPropias"><div class="vacio">Cargando…</div></div>
         </div>
 
+        <!-- ── Rutas de salida: por qué troncal sale cada campaña ── -->
+        <div class="c">
+          <div class="c-h"><h2>Rutas de salida</h2></div>
+          <p class="c-sub">Por qué troncal salen las llamadas de cada campaña. Sin elegir
+            otra, salen por servcom. El cambio vale desde la llamada siguiente.</p>
+          <div id="trkRutas"><div class="vacio">Cargando…</div></div>
+        </div>
+
         <!-- ── Formulario ── -->
         <div class="c" id="trkEditor" style="display:none">
           <div class="c-h"><h2 id="trkTitulo">Nueva troncal</h2></div>
@@ -1482,6 +1490,11 @@
             <div class="f"><label>Puerto</label>
               <input class="fi mono" id="trkPuerto" type="number" value="5060"></div>
           </div>
+
+          <div class="f"><label>Prefijo de marcación</label>
+            <input class="fi mono" id="trkPrefijo" placeholder="Vacío si no lleva" autocomplete="off"
+                   style="max-width:240px">
+            <div class="hint">Lo que el operador pide antes de cada número. Por ejemplo, servcom usa 19157.</div></div>
 
           <label class="chk"><input type="checkbox" id="trkRegistra" checked>
             Registrarse contra el operador</label>

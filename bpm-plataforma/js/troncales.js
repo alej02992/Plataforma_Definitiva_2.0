@@ -25,7 +25,68 @@ const troncales = (() => {
     if (!$k('trkLista')) return;
     await consultar();
     await cargarPropias();
+    await pintarRutas();
   }
+
+  /* ═══════════ RUTAS DE SALIDA ═══════════
+     Una fila por campaña, con un desplegable para elegir su troncal.
+     Se guarda al cambiarlo: no hay botón, porque cada fila es una
+     decisión aparte y el cambio vale desde la llamada siguiente.     */
+  async function pintarRutas() {
+    if (!$k('trkRutas')) return;
+    let r;
+    try {
+      r = await servicio.listarRutas();
+    } catch (e) {
+      $k('trkRutas').innerHTML = `<div class="aviso av-r"><div>${seguro.texto(e.message)}</div></div>`;
+      return;
+    }
+    if (!r.campanas.length) {
+      $k('trkRutas').innerHTML = '<div class="vacio">No hay campañas.</div>';
+      return;
+    }
+
+    const opciones = (actual) => r.troncales.map((x) =>
+      `<option value="${seguro.texto(x.nombre)}"${x.nombre === actual ? ' selected' : ''}>${
+        seguro.texto(x.etiqueta)}</option>`).join('');
+
+    $k('trkRutas').innerHTML = `<div style="overflow-x:auto"><table class="tb">
+      <tr><th>Campaña</th><th>Agentes</th><th>Sale por</th></tr>
+      ${r.campanas.map((c) => `<tr>
+        <td><b>${seguro.texto(c.nombre)}</b></td>
+        <td class="mono">${seguro.texto(c.agentes)}</td>
+        <td><select class="fi" data-ruta="${seguro.texto(c.id)}" data-antes="${seguro.texto(c.troncal)}"
+              style="max-width:280px">${opciones(c.troncal)}</select></td>
+      </tr>`).join('')}</table></div>
+      ${r.troncales.length === 1 ? `<div class="hint" style="margin-top:8px">Por ahora solo está servcom.
+        Las troncales que actives aparecerán aquí.</div>` : ''}`;
+  }
+
+  $k('trkRutas')?.addEventListener('change', async (e) => {
+    const sel = e.target.closest('[data-ruta]');
+    if (!sel) return;
+    const fila = sel.closest('tr');
+    const campana = fila?.querySelector('b')?.textContent || '';
+    const destino = sel.selectedOptions[0]?.textContent || sel.value;
+
+    if (!confirm(`¿Las llamadas de ${campana} saldrán por ${destino}?\n\n` +
+                 'El cambio vale desde la llamada siguiente, para agentes, marcación y blaster.')) {
+      sel.value = sel.dataset.antes;
+      return;
+    }
+
+    sel.disabled = true;
+    try {
+      await servicio.guardarRuta(sel.dataset.ruta, sel.value);
+      sel.dataset.antes = sel.value;
+      aviso(`${campana} ahora sale por ${sel.value}.`, 'av-b');
+    } catch (err) {
+      sel.value = sel.dataset.antes;
+      aviso(err.message, 'av-a');
+    } finally {
+      sel.disabled = false;
+    }
+  });
 
   async function consultar() {
     const btn = $k('btnTrkRefrescar');
@@ -161,6 +222,7 @@ const troncales = (() => {
     $k('trkContexto').value = t?.contexto || 'from-pstn';
     $k('trkCid').value = t?.identificador || '';
     $k('trkCodecs').value = t?.codecs || 'ulaw,alaw';
+    if ($k('trkPrefijo')) $k('trkPrefijo').value = t?.prefijo || '';
     $k('trkErr').innerHTML = '';
     $k('trkClaveHint').textContent = t
       ? 'Déjala vacía para no cambiarla.'
@@ -190,6 +252,7 @@ const troncales = (() => {
       contexto: $k('trkContexto').value.trim(),
       identificador: $k('trkCid').value.trim(),
       codecs: $k('trkCodecs').value.trim(),
+      prefijo: ($k('trkPrefijo')?.value || '').trim(),
     };
 
     const btn = $k('btnTrkGuardar');
@@ -254,6 +317,7 @@ const troncales = (() => {
             r.aviso ? 'av-a' : 'av-b');
       await cargarPropias();
       await consultar();                  // la lista de la central también cambia
+      await pintarRutas();                // y las troncales que se pueden asignar
     } catch (err) {
       aviso(err.message, 'av-a');
       bEstado.disabled = false;

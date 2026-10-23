@@ -352,6 +352,10 @@ const servicio = (() => {
 
   /** Pone la troncal en servicio o la saca. Es lo único que escribe en
       la configuración de la central. */
+  /** Por qué troncal sale cada campaña. */
+  const listarRutas = () => api('GET', '/troncales/rutas');
+  const guardarRuta = (campanaId, troncal) => api('PUT', `/troncales/rutas/${campanaId}`, { troncal });
+
   const estadoTroncal = (id, estado) =>
     api('PUT', `/troncales/propias/${id}/estado`, { estado });
 
@@ -745,7 +749,7 @@ const servicio = (() => {
     listarFormulariosReporte, reporteFormulario, listarBlastersReporte, reporteBlaster,
     generarAudioBlaster, gruposBlaster, blasterABase, escucharDestino, reporteSesiones, exportarReporte,
     listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
-    eliminarTroncal, estadoTroncal,
+    eliminarTroncal, estadoTroncal, listarRutas, guardarRuta,
     leerTipificador, guardarTipificador,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,
