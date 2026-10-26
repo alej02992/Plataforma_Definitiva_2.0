@@ -337,11 +337,11 @@ const reportes = (() => {
       columnasVistas = def.columnas || d.columnas || [];
 
       ultimoResumen = def.resumen(d.resumen || {});
-      ultimoReparto = d.reparto || [];
+      ultimoReparto = gruposDe(tipo, d, filas);
       ultimoNombre = d.blaster || d.formulario || '';
 
       pintarResumen(ultimoResumen);
-      pintarReparto(d.reparto, tipo === 'formularios' || tipo === 'blaster');
+      pintarReparto(ultimoReparto);
 
       if (tipo === 'blaster') await ofrecerGrupos(filtros.blaster_id, d.blaster);
       pintarTabla(columnasVistas);
@@ -370,7 +370,62 @@ const reportes = (() => {
    * formularios es una por cada pregunta de opciones, porque interesa
    * saber cómo se repartieron las respuestas de cada una.
    */
-  function pintarReparto(reparto, porPregunta = false) {
+  /**
+   * Cuenta cuántas filas hay de cada valor de un campo y lo deja listo
+   * para dibujar en barras. Los ocho más frecuentes; el resto, juntos en
+   * "Otros", para que un agente o un resultado raro no alargue el
+   * reporte sin decir nada.
+   */
+  function contar(lista, campo, etiqueta, unidad) {
+    const total = lista.length;
+    if (!total) return null;
+    const cuenta = new Map();
+    lista.forEach((f) => {
+      const v = String(f[campo] ?? '').trim() || 'Sin dato';
+      cuenta.set(v, (cuenta.get(v) || 0) + 1);
+    });
+    let opciones = [...cuenta.entries()].sort((a, z) => z[1] - a[1]);
+    if (opciones.length > 8) {
+      const resto = opciones.slice(7).reduce((s, [, n]) => s + n, 0);
+      opciones = [...opciones.slice(0, 7), ['Otros', resto]];
+    }
+    const pct = (n) => Math.round((n / total) * 1000) / 10;
+    return {
+      etiqueta, total, unidad,
+      opciones: opciones.map(([valor, n]) => ({ valor, cantidad: n, porcentaje: pct(n) })),
+    };
+  }
+
+  /**
+   * Los grupos de barras de cada reporte. Todos terminan con la misma
+   * forma —una lista de grupos—, así la pantalla y el PDF los dibujan
+   * igual sin importar de qué reporte vengan.
+   */
+  function gruposDe(tipo, d, lista) {
+    const delServidor = d.reparto || [];
+    /* El de tipificación viene como lista plana: se vuelve un grupo */
+    const servidor = !delServidor.length ? []
+      : delServidor[0].opciones ? delServidor
+      : [{ etiqueta: 'Resultado de las gestiones', total: lista.length, unidad: 'gestiones',
+           opciones: delServidor.map((x) => ({ valor: x.resultado ?? x.valor,
+                                               cantidad: x.cantidad, porcentaje: x.porcentaje })) }];
+
+    if (tipo === 'llamadas') {
+      return [
+        contar(lista, 'estado', 'Resultado de las llamadas', 'llamadas'),
+        contar(lista, 'direccion', 'Entrantes y salientes', 'llamadas'),
+        contar(lista, 'agente', 'Llamadas por agente', 'llamadas'),
+        contar(lista.filter((x) => x.tipificacion && x.tipificacion !== '—'),
+               'tipificacion', 'Cómo se tipificaron', 'tipificadas'),
+      ].filter(Boolean);
+    }
+    if (tipo === 'tipificaciones') {
+      return [...servidor, contar(lista, 'agente', 'Gestiones por agente', 'gestiones')].filter(Boolean);
+    }
+    return servidor;
+  }
+
+  function pintarReparto(reparto) {
     if (!reparto?.length) { $r('rpRepartoBox').style.display = 'none'; return; }
 
     $r('rpRepartoBox').style.display = '';
@@ -383,15 +438,14 @@ const reportes = (() => {
         <span class="rep-pct mono">${seguro.texto(x.porcentaje)}%</span>
       </div>`).join('');
 
-    $r('rpReparto').innerHTML = porPregunta
-      ? reparto.map((p) => `
-          <div style="margin-bottom:14px">
+    /* Los grupos van en una rejilla de dos columnas, como en el PDF */
+    $r('rpReparto').innerHTML = `<div class="rep-grupos">${reparto.map((p) => `
+          <div class="rep-grupo">
             <div class="dia-h"><h3>${seguro.texto(p.etiqueta)}</h3>
-              <span class="dia-sub">${seguro.texto(p.total)} ${
-                /lista/i.test(p.etiqueta || '') ? 'personas' : 'respuestas'}</span></div>
-            ${barras(p.opciones)}
-          </div>`).join('')
-      : barras(reparto);
+              <span class="dia-sub">${seguro.texto(p.total)} ${seguro.texto(p.unidad ||
+                (/lista/i.test(p.etiqueta || '') ? 'personas' : 'respuestas'))}</span></div>
+            ${barras(p.opciones || [])}
+          </div>`).join('')}</div>`;
   }
 
   function pintarTabla(columnas) {
@@ -443,11 +497,7 @@ const reportes = (() => {
         /* El reparto de tipificación es una lista plana; los de
            formularios y blaster vienen por pregunta. El PDF los espera
            por grupo, así que se unifica aquí. */
-        const reparto = !ultimoReparto.length ? []
-          : ultimoReparto[0].opciones ? ultimoReparto
-          : [{ etiqueta: 'Resultados', total: filas.length,
-               opciones: ultimoReparto.map((x) => ({ valor: x.resultado, cantidad: x.cantidad,
-                                                     porcentaje: x.porcentaje })) }];
+        const reparto = ultimoReparto;   // ya viene por grupos, igual que en pantalla
 
         const r = await servicio.exportarReporte(tipo, formato, filas, periodo,
           tipo === 'formularios' ? columnasVistas : null,

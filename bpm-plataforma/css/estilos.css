@@ -877,3 +877,8 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .ivr-paso.ok > span{background:var(--ok);color:#fff;border-color:var(--ok)}
 .ivr-paso b{display:block;font-size:13.5px;color:var(--ink)}
 .ivr-paso small{font-size:12px;color:var(--ink-3)}
+
+/* ══════════ REPORTES · grupos de barras en dos columnas ══════════ */
+.rep-grupos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px 28px}
+.rep-grupo{min-width:0}
+.rep-grupo .dia-h{margin-bottom:6px}
