@@ -882,3 +882,86 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
 .rep-grupos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px 28px}
 .rep-grupo{min-width:0}
 .rep-grupo .dia-h{margin-bottom:6px}
+
+/* ══════════ FLUJOS IVR · el diseñador ══════════ */
+.fl-editor{display:flex;flex-direction:column;gap:10px}
+.fl-barra{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;
+  background:#fff;border:1px solid var(--line);border-radius:12px}
+.fl-nombre{max-width:320px;font-weight:700}
+
+.fl-cuerpo{display:grid;grid-template-columns:190px 1fr 290px;gap:10px;
+  height:calc(100vh - 230px);min-height:520px}
+
+/* La paleta */
+.fl-paleta,.fl-props{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;overflow-y:auto}
+.fl-paleta-t,.fl-props-t{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--ink);
+  font-size:13.5px;margin-bottom:10px}
+.fl-bloque{display:flex;align-items:center;gap:9px;padding:8px 9px;margin-bottom:6px;border-radius:9px;
+  border:1px solid var(--line);background:var(--soft);cursor:grab;font-size:13px;font-weight:600;
+  color:var(--ink);user-select:none}
+.fl-bloque:hover{border-color:var(--secondary);background:var(--secondary-l)}
+.fl-paleta-ayuda{margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--ink-3)}
+.fl-ico{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:7px}
+.fl-ico svg{width:15px;height:15px}
+
+/* El lienzo: una rejilla de puntos, como papel cuadriculado */
+.fl-lienzo{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;cursor:grab;
+  background-color:#F7F9FB;background-image:radial-gradient(#D5DDE3 1px,transparent 1px);background-size:16px 16px;
+  touch-action:none}
+.fl-lienzo:active{cursor:grabbing}
+.fl-mundo{position:absolute;left:0;top:0;transform-origin:0 0}
+.fl-lineas{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.fl-linea{fill:none;stroke:#8B979F;stroke-width:2}
+.fl-linea.on{stroke:var(--secondary);stroke-width:3}
+.fl-linea.temporal{stroke:var(--secondary);stroke-dasharray:6 5}
+.fl-linea-toque{fill:none;stroke:transparent;stroke-width:14;pointer-events:stroke;cursor:pointer}
+
+/* Los bloques */
+.fl-nodo{position:absolute;width:210px;background:#fff;border:1.5px solid var(--line);border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,46,68,.08);cursor:default;user-select:none}
+.fl-nodo.on{border-color:var(--secondary);box-shadow:0 0 0 3px var(--secondary-l),0 4px 14px rgba(0,46,68,.12)}
+.fl-nodo.fl-error{border-color:var(--danger)}
+.fl-nodo.fl-error.on{box-shadow:0 0 0 3px #FBEAEA,0 4px 14px rgba(0,46,68,.12)}
+.fl-nodo-h{position:relative;display:flex;align-items:center;gap:8px;padding:9px 10px 7px;cursor:move}
+.fl-nodo-h b{font-size:13px;color:var(--ink)}
+.fl-nodo-r{padding:0 12px 9px 44px;font-size:12px;color:var(--ink-2);line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-nodo.fl-error .fl-nodo-r{color:var(--danger)}
+
+/* La entrada, a la izquierda; las salidas, a la derecha */
+.fl-entrada{position:absolute;left:-8px;top:50%;margin-top:-7px;width:14px;height:14px;border-radius:50%;
+  background:#fff;border:2px solid #8B979F}
+.fl-salidas{border-top:1px solid var(--line);padding:4px 0}
+.fl-salida{position:relative;display:flex;align-items:center;justify-content:flex-end;padding:3px 18px 3px 12px;
+  font-size:11.5px;color:var(--ink-2)}
+.fl-salida span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-puerto{position:absolute;right:-8px;top:50%;margin-top:-7px;width:14px;height:14px;border-radius:50%;
+  background:#fff;border:2px solid var(--c,#8B979F);cursor:crosshair}
+.fl-puerto.unido{background:var(--c,#8B979F)}
+.fl-puerto:hover{transform:scale(1.3)}
+
+.fl-zoom{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:6px;padding:5px 7px;
+  background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 2px 8px rgba(0,46,68,.08)}
+.fl-zoom span{min-width:42px;text-align:center;font-size:12px;color:var(--ink-2)}
+
+/* El panel de opciones */
+.fl-props .f{margin-bottom:10px}
+.fl-op{display:grid;grid-template-columns:58px 1fr auto;gap:6px;margin-bottom:6px}
+.fl-dias{display:flex;flex-wrap:wrap;gap:6px}
+.fl-dia{display:flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid var(--line);border-radius:7px;
+  font-size:12px;cursor:pointer}
+
+/* Lo que falta */
+.fl-pendientes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;font-size:12.5px;
+  background:#fff;border:1px solid var(--line);border-radius:12px;color:var(--ink-2)}
+.fl-pend{border:1px solid #F3D49B;background:#FFF8EA;color:#7A5300;border-radius:7px;padding:4px 8px;
+  font-size:12px;cursor:pointer}
+.fl-pend:hover{border-color:#E08A00}
+
+@media (max-width:1100px){
+  .fl-cuerpo{grid-template-columns:1fr;height:auto}
+  .fl-paleta{display:flex;flex-wrap:wrap;gap:6px}
+  .fl-paleta .fl-bloque{margin:0}
+  .fl-paleta-ayuda,.fl-paleta-t{width:100%}
+  .fl-lienzo{height:520px}
+}

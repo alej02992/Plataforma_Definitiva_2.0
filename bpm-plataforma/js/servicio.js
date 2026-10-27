@@ -352,6 +352,14 @@ const servicio = (() => {
 
   /** Pone la troncal en servicio o la saca. Es lo único que escribe en
       la configuración de la central. */
+  /* ── Flujos IVR ── */
+  const listarFlujos = () => api('GET', '/flujos');
+  const leerFlujo = (id) => api('GET', `/flujos/${id}`);
+  const crearFlujo = (datos) => api('POST', '/flujos', datos);
+  const guardarFlujo = (id, datos) => api('PUT', `/flujos/${id}`, datos);
+  const duplicarFlujo = (id) => api('POST', `/flujos/${id}/duplicar`);
+  const eliminarFlujo = (id) => api('DELETE', `/flujos/${id}`);
+
   /** Por qué troncal sale cada campaña. */
   const listarRutas = () => api('GET', '/troncales/rutas');
   const guardarRuta = (campanaId, troncal) => api('PUT', `/troncales/rutas/${campanaId}`, { troncal });
@@ -750,6 +758,7 @@ const servicio = (() => {
     generarAudioBlaster, gruposBlaster, blasterABase, escucharDestino, reporteSesiones, exportarReporte,
     listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
     eliminarTroncal, estadoTroncal, listarRutas, guardarRuta,
+    listarFlujos, leerFlujo, crearFlujo, guardarFlujo, duplicarFlujo, eliminarFlujo,
     leerTipificador, guardarTipificador,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,

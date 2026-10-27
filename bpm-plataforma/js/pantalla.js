@@ -199,6 +199,7 @@ function irA(vista) {
     if (vista === 'usuarios')     administracion.abrirUsuarios();
     if (vista === 'modulos')      administracion.abrirModulos();
     if (vista === 'troncales' && typeof troncales !== 'undefined') troncales.abrir();
+    if (vista === 'ivr' && typeof flujos !== 'undefined') flujos.abrir();
   }
 }
 
