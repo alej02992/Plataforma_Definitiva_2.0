@@ -1,14 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════════
-   BPM CONSULTING — ACCESO AL SERVIDOR
-
-   La única puerta entre las pantallas y el servidor. Cada pantalla
-   pide aquí lo que necesita —usuarios, campañas, reportes, blaster,
-   troncales, flujos— y este archivo hace la llamada a /api, agrega el
-   token de la sesión y traduce los errores a mensajes claros.
-
-   Ninguna pantalla llama al servidor por su cuenta: si cambia una
-   dirección del servidor, se cambia solo aquí.
-   ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -439,6 +428,20 @@ const servicio = (() => {
     catch (e) { return { ok: false, error: e.message }; }
   }
 
+  /** Duración de un estado básico en una campaña.
+      datos: { limite_minutos: 10 } · { limite_minutos: null } (sin
+      límite) · { usarGeneral: true } (vuelve a la general). */
+  async function duracionEstado(id, campanaId, datos) {
+    try { return { ok: true, ...(await api('PUT', `/pausas/tipos/${id}/campanas/${campanaId}`, datos)) }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
+  /** Duración general de un estado (solo el administrador). Vacío = sin límite. */
+  async function duracionGeneral(id, minutos) {
+    try { await api('PUT', '/pausas/tipos/' + id, { limite_minutos: minutos }); return { ok: true }; }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
   /* ── Campañas a cargo y alta masiva ── */
 
   /** Borra un usuario para siempre. Solo funciona si ya está dado de
@@ -705,6 +708,7 @@ const servicio = (() => {
     guardarCampana, eliminarCampana, alternarHorario,
     hayApi, contactoPorTelefono, catalogoTipificacion, cambiarMiClave,
     listarEstados, crearEstado, activarEstado, eliminarEstado, campanasDeEstados,
+    duracionEstado, duracionGeneral,
     leerTabla, subirAudio, listarAudios,
     indicadoresDelDia, reporteLlamadas, reporteTipificaciones,
     listarFormulariosReporte, reporteFormulario, listarBlastersReporte, reporteBlaster,

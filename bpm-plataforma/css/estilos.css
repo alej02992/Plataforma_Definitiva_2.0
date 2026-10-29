@@ -738,6 +738,10 @@ textarea.fi{resize:vertical;min-height:66px;line-height:1.5}
   background:#fff;color:var(--secondary-d);font-weight:700;font-size:12px;cursor:pointer}
 .dist-mas:hover{border-color:var(--secondary);background:var(--secondary-l)}
 
+/* ── Estados básicos: duración por campaña ── */
+.est-min{display:inline-block;width:84px;padding:6px 8px}
+.est-sin{display:inline-flex;margin-left:10px;padding:0}
+
 /* ══════════ ADMINISTRACIÓN · TRONCALES ══════════ */
 .trk{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);
   border-radius:9px;background:#fff;margin-bottom:8px;border-left-width:3px}

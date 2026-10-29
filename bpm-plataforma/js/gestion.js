@@ -6,6 +6,10 @@
    desactiva. Los activos aparecen como botón en el panel de los agentes
    que correspondan, sin que tengan que recargar.
 
+   Los estados básicos (break, almuerzo, baño…) son de todas las campañas
+   y no se pueden eliminar ni desactivar. Cada campaña puede darles su
+   propia duración; si no, usan la general.
+
    El servidor también comprueba a quién le toca cada estado, así que
    ocultar un botón no es lo único que lo protege.
    ═══════════════════════════════════════════════════════════════════ */
@@ -22,6 +26,8 @@ const gestionEstados = (() => {
   }
 
   let puedeGeneral = false;      // solo el administrador
+  let campanasEst = [];          // las campañas que administra quien está
+  let listaActual = [];          // todos los estados, tal como llegaron
 
   /* El supervisor solo administra sus campañas: su desplegable trae las
      suyas y no incluye "Todas". El servidor lo comprueba igual. */
@@ -30,6 +36,18 @@ const gestionEstados = (() => {
     try { r = await servicio.campanasDeEstados(); } catch { /* queda vacío */ }
 
     puedeGeneral = !!r.general;
+    campanasEst = r.campanas;
+
+    /* Las campañas para ver la duración de los básicos */
+    const previa = $e('estBasCampana')?.value;
+    if ($e('estBasCampana')) {
+      $e('estBasCampana').innerHTML = r.campanas.length
+        ? r.campanas.map((c) => `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('')
+        : '<option value="">Sin campañas asignadas</option>';
+      $e('estBasCampana').disabled = !r.campanas.length;
+      if (previa && r.campanas.some((c) => String(c.id) === previa)) $e('estBasCampana').value = previa;
+    }
+
     const opciones = r.campanas
       .map((c) => `<option value="${seguro.texto(c.id)}">${seguro.texto(c.nombre)}</option>`).join('');
 
@@ -59,13 +77,18 @@ const gestionEstados = (() => {
       return;
     }
 
+    listaActual = lista;
+    pintarBasicos();
+
+    /* Abajo, solo los propios de cada campaña */
+    lista = lista.filter((t) => !t.basico);
     const mios = lista.filter((t) => t.editable).length;
     $e('estN').textContent = puedeGeneral
       ? `${lista.filter((t) => t.activo).length} activos`
       : `${mios} de tus campañas`;
 
     if (!lista.length) {
-      $e('tablaEstados').innerHTML = '<div class="vacio">Todavía no hay estados creados.</div>';
+      $e('tablaEstados').innerHTML = '<div class="vacio">Ninguna campaña tiene estados propios todavía.</div>';
       return;
     }
 
@@ -83,9 +106,110 @@ const gestionEstados = (() => {
               ${t.activo ? 'Desactivar' : 'Activar'}</button>
             <button class="b b-red b-sm" data-borrar="${seguro.texto(t.id)}"
                     title="Solo si nunca se ha usado">Eliminar</button>`
-          : `<span class="t o" title="Lo administra el superadministrador">General</span>`}
+          : ''}
         </td></tr>`).join('')}</table>`;
   }
+
+  /* ═══════════ ESTADOS BÁSICOS ═══════════
+     Una fila por estado, con su duración en la campaña elegida. La
+     duración se guarda sola al cambiarla: vacía = usa la general. */
+  const minutos = (m) => (m === null || m === undefined ? 'Sin límite' : `${m} min`);
+
+  function pintarBasicos() {
+    const caja = $e('tablaBasicos');
+    if (!caja) return;
+    const basicos = listaActual.filter((t) => t.basico);
+    $e('estBasN').textContent = `${basicos.length} estados`;
+
+    const cid = $e('estBasCampana')?.value;
+    if (!cid) {
+      caja.innerHTML = '<div class="vacio">No tienes campañas a cargo.</div>';
+      return;
+    }
+    if (!basicos.length) {
+      caja.innerHTML = '<div class="vacio">No hay estados básicos.</div>';
+      return;
+    }
+    const campana = campanasEst.find((c) => String(c.id) === String(cid))?.nombre || '';
+
+    caja.innerHTML = `<div style="overflow-x:auto"><table class="tb">
+      <tr><th>Estado</th><th>Duración en ${seguro.texto(campana)}</th><th></th><th>General</th><th></th></tr>
+      ${basicos.map((t) => {
+        const propia = t.porCampana && Object.prototype.hasOwnProperty.call(t.porCampana, cid);
+        const valor = propia ? t.porCampana[cid] : undefined;      // número, null (sin límite) o undefined
+        return `<tr>
+          <td><b>${seguro.texto(t.nombre)}</b>${t.activo ? '' : ' <span class="t o">Inactivo</span>'}</td>
+          <td style="white-space:nowrap">
+            <input class="fi mono est-min" type="number" min="1" max="480" data-dur="${seguro.texto(t.id)}"
+                   value="${propia && valor !== null ? seguro.texto(valor) : ''}"
+                   placeholder="${propia ? '' : seguro.texto(t.limite_minutos ?? '∞')}"
+                   ${propia && valor === null ? 'disabled' : ''} aria-label="Minutos en ${seguro.texto(campana)}"> min
+            <label class="chk est-sin"><input type="checkbox" data-sin="${seguro.texto(t.id)}"
+                   ${propia && valor === null ? 'checked' : ''}> Sin límite</label>
+          </td>
+          <td>${propia
+            ? '<span class="t b">Propia de la campaña</span>'
+            : '<span class="t o">Usa la general</span>'}</td>
+          <td class="mono">${puedeGeneral
+            ? `<input class="fi mono est-min" type="number" min="1" max="480" data-gen="${seguro.texto(t.id)}"
+                      value="${seguro.texto(t.limite_minutos ?? '')}" placeholder="∞"
+                      title="Vacío = sin límite" aria-label="Duración general"> min`
+            : minutos(t.limite_minutos)}</td>
+          <td style="text-align:right;white-space:nowrap">
+            ${propia ? `<button class="b b-gh b-sm" data-usar-general="${seguro.texto(t.id)}">Usar la general</button>` : ''}
+            ${t.activo ? '' : `<button class="b b-teal b-sm" data-est="${seguro.texto(t.id)}" data-act="1">Activar</button>`}
+          </td>
+        </tr>`;
+      }).join('')}</table></div>
+      <div class="hint" style="margin-top:8px">Escribe los minutos y se guarda solo. Déjalo vacío para usar la
+        duración general${puedeGeneral ? '; la general la cambias en su propia columna' : ''}.</div>`;
+  }
+
+  async function guardarDuracion(id, datos, que) {
+    const r = await servicio.duracionEstado(id, $e('estBasCampana').value, datos);
+    if (!r.ok) { aviso(r.error, 'av-a'); await pintar(); return; }
+    await pintar();
+    aviso(que, 'av-b');
+  }
+
+  $e('estBasCampana')?.addEventListener('change', pintarBasicos);
+
+  $e('tablaBasicos')?.addEventListener('change', async (ev) => {
+    const el = ev.target;
+    const fila = el.closest('tr');
+    const nombre = fila?.querySelector('b')?.textContent || 'El estado';
+    const campana = $e('estBasCampana').selectedOptions[0]?.textContent || '';
+
+    if (el.dataset.sin) {
+      return el.checked
+        ? guardarDuracion(el.dataset.sin, { limite_minutos: null }, `${nombre} no tiene límite en ${campana}.`)
+        : guardarDuracion(el.dataset.sin, { usarGeneral: true }, `${nombre} vuelve a la duración general en ${campana}.`);
+    }
+    if (el.dataset.dur) {
+      const v = el.value.trim();
+      if (!v) return guardarDuracion(el.dataset.dur, { usarGeneral: true }, `${nombre} vuelve a la duración general en ${campana}.`);
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 1 || n > 480) { aviso('La duración va de 1 a 480 minutos.', 'av-a'); return pintarBasicos(); }
+      return guardarDuracion(el.dataset.dur, { limite_minutos: n }, `${nombre} dura ${n} minutos en ${campana}.`);
+    }
+    if (el.dataset.gen) {
+      const v = el.value.trim();
+      const n = v ? Number(v) : null;
+      if (n !== null && (!Number.isInteger(n) || n < 1 || n > 480)) { aviso('La duración va de 1 a 480 minutos.', 'av-a'); return pintarBasicos(); }
+      const r = await servicio.duracionGeneral(el.dataset.gen, n);
+      if (!r.ok) { aviso(r.error, 'av-a'); return pintar(); }
+      await pintar();
+      aviso(`${nombre}: duración general ${n === null ? 'sin límite' : n + ' minutos'}. Aplica en las campañas que no tienen la suya.`, 'av-b');
+    }
+  });
+
+  $e('tablaBasicos')?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-usar-general]');
+    if (!b) return;
+    const nombre = b.closest('tr')?.querySelector('b')?.textContent || 'El estado';
+    const campana = $e('estBasCampana').selectedOptions[0]?.textContent || '';
+    guardarDuracion(b.dataset.usarGeneral, { usarGeneral: true }, `${nombre} vuelve a la duración general en ${campana}.`);
+  });
 
   async function crear() {
     const nombre = $e('estNuevo').value.trim();
@@ -94,6 +218,10 @@ const gestionEstados = (() => {
       $e('estNuevo').focus();
       return;
     }
+
+    if (!$e('estCampana').value && !confirm(
+      `"${nombre}" será un estado básico: lo tendrán todas las campañas y no se podrá eliminar ` +
+      'ni desactivar después. ¿Crearlo así?')) return;
 
     const btn = $e('btnEstCrear');
     btn.disabled = true;

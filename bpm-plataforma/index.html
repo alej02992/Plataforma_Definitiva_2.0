@@ -704,10 +704,24 @@
           <div id="tablaExcedidas"></div>
         </div>
 
+        <!-- Los básicos: de todas las campañas, no se borran; cada campaña
+             puede darles su propia duración. -->
         <div class="c">
-          <div class="c-h"><h2>Estados de pausa</h2><span class="t o" id="estN">—</span></div>
-          <p class="c-sub">Los estados activos aparecen como botón en el panel de los
-            agentes. Puedes dejarlos para todas las campañas o solo para una.</p>
+          <div class="c-h"><h2>Estados básicos</h2><span class="t o" id="estBasN">—</span></div>
+          <p class="c-sub">Los tienen todas las campañas y no se pueden eliminar. Lo que sí se
+            puede cambiar es cuánto duran en cada campaña: si una no tiene su propia duración,
+            usa la general.</p>
+          <div class="f" style="max-width:320px">
+            <label>Campaña</label>
+            <select class="fi" id="estBasCampana"></select>
+          </div>
+          <div id="tablaBasicos"></div>
+        </div>
+
+        <div class="c">
+          <div class="c-h"><h2>Estados propios de cada campaña</h2><span class="t o" id="estN">—</span></div>
+          <p class="c-sub">Estados extra que crea un supervisor para una campaña. Los activos
+            aparecen como botón en el panel de sus agentes.</p>
           <div class="r2" style="align-items:end">
             <div class="f" style="margin:0">
               <label>Nuevo estado</label>
