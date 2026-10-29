@@ -1,26 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════
-   BPM CONSULTING — SERVICIO DE PLATAFORMA (SIMULADO)
+   BPM CONSULTING — ACCESO AL SERVIDOR
 
-   Este archivo representa al BACKEND que todavía no existe.
+   La única puerta entre las pantallas y el servidor. Cada pantalla
+   pide aquí lo que necesita —usuarios, campañas, reportes, blaster,
+   troncales, flujos— y este archivo hace la llamada a /api, agrega el
+   token de la sesión y traduce los errores a mensajes claros.
 
-   ---------------------------------------------------------------------
-   CONTRATO CON EL BACKEND REAL
-
-     POST   /api/sesion            { usuario, clave }
-       → { id, nombre, rol, campana, extension, permisos }
-     POST   /api/sip/credencial    (con el token de sesión)
-       → { wss, dominio, extension, clave, ice, venceEn }
-     GET    /api/campanas          → estado de cada campaña
-     GET    /api/agentes           → agentes conectados y su estado
-     GET    /api/colas             → llamadas en espera
-     GET    /api/formularios       → definiciones por campaña
-     POST   /api/formularios       → crear o modificar
-     POST   /api/respuestas        → envío de formularios diligenciados
-     GET    /api/reportes/:tipo    → datos para descargar
-
-   Los datos EN VIVO (campañas, agentes, colas) vendrán de los eventos
-   del AMI de Asterisk, no de consultas repetidas. Ver Sección 8 del
-   manual de integración.
+   Ninguna pantalla llama al servidor por su cuenta: si cambia una
+   dirección del servidor, se cambia solo aquí.
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -34,36 +21,6 @@
 const CATALOGO = {};
 
 const servicio = (() => {
-
-  /* ═════════════════════════════════════════════════════════════════
-     USUARIOS · en producción: tabla `usuario`
-     Cada persona YA trae su extensión — requisito de la reunión:
-     "la persona debe ser equivalente a la extensión que se crea".
-     ═════════════════════════════════════════════════════════════════ */
-
-  /* ═════════════════════════════════════════════════════════════════
-     CAMPAÑAS Y COLAS
-     Cada campaña se corresponde con una cola de Asterisk. Ese vínculo
-     decide qué catálogo ve el agente y en qué panel aparece la llamada.
-     La extensión de la cola es a donde se transfiere.
-     ═════════════════════════════════════════════════════════════════ */
-
-  /* ═════════════════════════════════════════════════════════════════
-     FORMULARIOS · tablas `formulario` y `formulario_campo`
-     El administrador y el supervisor los crean; el agente los llena.
-     ═════════════════════════════════════════════════════════════════ */
-  const TIPOS_CAMPO = [
-    { id: 'texto',       nombre: 'Texto corto' },
-    { id: 'texto_largo', nombre: 'Texto largo' },
-    { id: 'numero',      nombre: 'Número' },
-    { id: 'fecha',       nombre: 'Fecha' },
-    { id: 'opcion',      nombre: 'Lista de opciones' },
-    { id: 'casilla',     nombre: 'Casilla de verificación' },
-  ];
-
-
-
-  /** Formularios activos de una campaña. Es lo que ve el agente. */
 
   /* ═════════════════════════════════════════════════════════════════
      RESPUESTAS SIN CONEXIÓN
@@ -134,19 +91,12 @@ const servicio = (() => {
     borrarToken();
   }
 
-  /* ═════════════════════════════════════════════════════════════════
-     UTILIDADES
-     ═════════════════════════════════════════════════════════════════ */
-
   /* ═══════════════════════════════════════════════════════════════
-     ACCESO AL BACKEND
+     LLAMADAS AL SERVIDOR
 
-     Si CONFIG.api tiene una dirección, la plataforma habla con el
-     servidor. Si está vacía, trabaja con los datos locales de este
-     archivo, como hasta ahora.
-
-     Así se puede desarrollar y presentar sin backend, y activarlo
-     cambiando una línea en js/config.js.
+     La dirección sale de js/config.js (CONFIG.api). Si estuviera vacía,
+     cada función responde con un aviso claro en vez de fallar: así la
+     pantalla de Diagnóstico puede decir qué falta.
      ═══════════════════════════════════════════════════════════════ */
 
   const CLAVE_TOKEN = 'bpm.token';
@@ -218,6 +168,9 @@ const servicio = (() => {
     }
     return api('GET', '/vivo');
   }
+
+  /** Llamadas por hora, hoy y ayer, para el gráfico del seguimiento. */
+  const llamadasPorHora = () => api('GET', '/vivo/horas');
 
   /** Grabaciones del servidor de la central. */
   async function listarGrabaciones(filtros = {}) {
@@ -612,7 +565,7 @@ const servicio = (() => {
       el backend asigna la temporal y exige el cambio en el primer
       acceso. */
   async function guardarUsuarioRemoto(datos) {
-    if (!hayApi()) return guardarUsuario(datos);
+    if (!hayApi()) return { ok: false, error: 'Requiere conexión con el servidor.' };
 
     const cuerpo = {
       usuario: datos.usuario,
@@ -637,7 +590,7 @@ const servicio = (() => {
 
   /** Cambia el rol de un usuario. */
   async function cambiarRolRemoto(id, usuario, rol) {
-    if (!hayApi()) return cambiarRol(usuario, rol);
+    if (!hayApi()) return { ok: false, error: 'Requiere conexión con el servidor.' };
     try {
       await api('PUT', '/usuarios/' + id, { rol_id: ID_POR_ROL[rol] });
       return { ok: true };
@@ -648,7 +601,7 @@ const servicio = (() => {
 
   /** Reasigna la campaña de un usuario. */
   async function cambiarCampanaRemoto(id, usuario, campanaId, campana) {
-    if (!hayApi()) return cambiarCampana(usuario, campana);
+    if (!hayApi()) return { ok: false, error: 'Requiere conexión con el servidor.' };
     try {
       await api('PUT', '/usuarios/' + id, { campana_id: campanaId });
       return { ok: true };
@@ -772,11 +725,10 @@ const servicio = (() => {
     pausasExcedidas,
     campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva, eliminarUsuarioDefinitivo,
     registrarLlamadaServidor,
-    estadoEnVivo, listarGrabaciones, urlGrabacion, agentesGrabaciones,
+    estadoEnVivo, llamadasPorHora, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
     eliminarFormulario, enviarRespuesta,
     listarPaises, listarDepartamentos, listarMunicipios,
     registrarPausa,
-    get tiposCampo()  { return TIPOS_CAMPO.map((t) => ({ ...t })); },
   };
 })();

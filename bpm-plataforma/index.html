@@ -443,6 +443,8 @@
       <section class="vista" data-v="supervision">
         <!-- Aviso si el backend no pudo consultar la central -->
         <div id="avisoVivo" style="display:none;margin-bottom:12px"></div>
+        <!-- Lo que hay que atender ya: solo aparece si hay algo -->
+        <div id="segAlertas"></div>
         <!-- Cómo va el día. Es distinto del panel de agentes de abajo,
              que dice qué pasa en este segundo. -->
         <div class="dia-h">
@@ -451,16 +453,22 @@
         </div>
         <div class="tarjetas dia" id="kpiDia"></div>
 
+        <div class="c" style="margin-bottom:14px">
+          <div class="c-h"><h2>Llamadas por hora</h2><span class="dia-sub">Hoy contra ayer</span></div>
+          <div id="segHoras"><div class="vacio">Cargando…</div></div>
+        </div>
+
         <div class="dia-h">
           <h3>Ahora mismo</h3>
           <span class="dia-sub">Estado de los agentes en este momento</span>
         </div>
+        <div id="segReparto"></div>
         <div class="tarjetas" id="kpis"></div>
 
         <div class="rej rej-2">
-          <div class="c">
+          <div class="c" id="segColaBox">
             <div class="c-h"><h2>Llamadas en cola</h2><span class="t o" id="colaTag">—</span></div>
-            <p class="c-sub">Actualizado en tiempo real.</p>
+            <p class="c-sub">Quién está esperando a que lo atiendan, y desde hace cuánto.</p>
             <div id="tablaColas"></div>
           </div>
           <div class="c">
@@ -472,12 +480,22 @@
 
         <div class="c">
           <div class="c-h"><h2>Agentes</h2>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div class="tabs" id="segVistaAg" style="width:auto">
+                <button class="tab on" data-vista="tarjetas">Tarjetas</button>
+                <button class="tab" data-vista="tabla">Tabla</button>
+              </div>
+              <select class="fi b-sm" id="segOrden" style="width:auto;padding:5px 9px;font-size:11.5px" aria-label="Ordenar agentes">
+                <option value="estado">Por estado</option>
+                <option value="tiempo">Por tiempo</option>
+                <option value="llamadas">Por llamadas de hoy</option>
+                <option value="nombre">Por nombre</option>
+              </select>
               <select class="fi b-sm" id="filtroCampana" style="width:auto;padding:5px 9px;font-size:11.5px"></select>
               <span class="t o" id="agentesTag">—</span>
             </div>
           </div>
-          <p class="c-sub">Estado, permanencia y llamadas atendidas en el turno.</p>
+          <p class="c-sub">Estado y tiempo de cada agente, en vivo, y lo que lleva del día.</p>
           <div id="tablaAgentes"></div>
         </div>
       </section>

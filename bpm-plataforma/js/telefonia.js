@@ -1,24 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════
-   BPM CONSULTING — ESCRITORIO DEL AGENTE
-   Archivo único · SIP.js + WebRTC · sin backend
+   BPM CONSULTING — TELÉFONO DEL NAVEGADOR
+   SIP.js + WebRTC
 
-   ORGANIZACIÓN (igual a la del documento técnico):
+   El único archivo que habla con la central telefónica. Conecta la
+   extensión del usuario, hace y recibe llamadas, y maneja espera,
+   silencio, transferencias y la calidad del audio.
 
-     telefonia   → único bloque que toca SIP.js. Expone una interfaz
-                   estable y avisa de los cambios por medio de eventos.
-     pantalla    → dibuja. No sabe nada de SIP.
-     datos       → directorio y catálogo de demostración.
-
-   Cuando se migre a React, `telefonia` se copia tal cual a
-   servicioTelefonia.ts y las pantallas se reemplazan por componentes.
+   El resto de la plataforma no toca SIP.js: usa lo que este archivo
+   ofrece y se entera de los cambios con telefonia.on(evento, función).
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-
-/* Los datos de negocio (directorio y catálogo de tipificación) viven
-   ahora en js/servicio.js, que es donde corresponde. Este archivo se
-   ocupa únicamente de la telefonía.                                  */
 
 /* ═══════════════════════════════════════════════════════════════════
    MÓDULO DE TELEFONÍA
@@ -267,7 +260,6 @@ const telefonia = (() => {
   /* ═══════════ CICLO DE VIDA ═══════════ */
   function vigilar(session) {
     let contestada = false;
-    const t0 = Date.now();
 
     session.stateChange.addListener((s) => {
       if (s === SIP.SessionState.Established) {
@@ -557,10 +549,9 @@ const telefonia = (() => {
     est.statsId = setInterval(async () => {
       try {
         const rep = await pc.getStats();
-        let ent = null, sal = null, par = null, cod = null;
+        let ent = null, par = null, cod = null;
         rep.forEach((r) => {
           if (r.type === 'inbound-rtp' && r.kind === 'audio') ent = r;
-          if (r.type === 'outbound-rtp' && r.kind === 'audio') sal = r;
           if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) par = r;
           if (r.type === 'codec' && r.mimeType?.startsWith('audio')) cod = r;
         });
@@ -582,8 +573,6 @@ const telefonia = (() => {
     }, 2000);
   }
   function detenerStats() { if (est.statsId) clearInterval(est.statsId); est.statsId = null; }
-
-  /* ═══════════ MODO DEMOSTRACIÓN ═══════════ */
 
   /* ═══════════ TRAZA DE SIP.js ═══════════ */
   function constructorTraza(nivel, categoria, etiqueta, contenido) {
