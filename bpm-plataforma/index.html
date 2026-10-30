@@ -1167,6 +1167,21 @@
           <p class="c-sub" id="escDetalle">—</p>
           <button class="b b-red b-w" id="btnDejarEscucha">Salir de la escucha</button>
         </div>
+
+        <!-- Lo que queda en la auditoría: quién escuchó a quién y cuándo -->
+        <div class="c">
+          <div class="c-h"><h2>Escuchas recientes</h2>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select class="fi b-sm" id="escPeriodo" style="width:auto;padding:5px 9px;font-size:11.5px" aria-label="Periodo">
+                <option value="1">Hoy</option>
+                <option value="7" selected>Últimos 7 días</option>
+                <option value="30">Últimos 30 días</option>
+              </select>
+              <span class="t o" id="escRecN">—</span>
+            </div></div>
+          <p class="c-sub">Cada escucha queda registrada: quién la hizo, a qué agente, de qué forma y cuándo.</p>
+          <div id="tablaEscRecientes"><div class="vacio">Cargando…</div></div>
+        </div>
       </section>
 
       <!-- ══════ CONFIGURACIÓN DE CAMPAÑAS · superadmin ══════ -->

@@ -158,6 +158,9 @@ const servicio = (() => {
     return api('GET', '/vivo');
   }
 
+  /** Quién escuchó a quién: hoy (1), la última semana (7) o el último mes (30). */
+  const escuchasRecientes = (dias = 7) => api('GET', '/escuchas/recientes?dias=' + dias);
+
   /** Llamadas por hora, hoy y ayer, para el gráfico del seguimiento. */
   const llamadasPorHora = () => api('GET', '/vivo/horas');
 
@@ -729,7 +732,7 @@ const servicio = (() => {
     pausasExcedidas,
     campanasDeUsuario, guardarCampanasDeUsuario, altaMasiva, eliminarUsuarioDefinitivo,
     registrarLlamadaServidor,
-    estadoEnVivo, llamadasPorHora, listarGrabaciones, urlGrabacion, agentesGrabaciones,
+    estadoEnVivo, llamadasPorHora, escuchasRecientes, listarGrabaciones, urlGrabacion, agentesGrabaciones,
     listarFormularios, leerFormulario, crearFormulario, guardarFormulario,
     eliminarFormulario, enviarRespuesta,
     listarPaises, listarDepartamentos, listarMunicipios,

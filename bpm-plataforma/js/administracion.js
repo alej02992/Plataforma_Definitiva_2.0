@@ -432,6 +432,7 @@ const administracion = (() => {
 
   async function abrirEscucha() {
     await pintarEscucha();
+    pintarRecientes();
 
     clearInterval(relojEscucha);
     relojEscucha = setInterval(() => {
@@ -440,6 +441,48 @@ const administracion = (() => {
       else { clearInterval(relojEscucha); relojEscucha = null; }
     }, 5000);
   }
+
+  /* ── Escuchas recientes ──
+     Lo que quedó en la auditoría. Se carga al abrir la vista y después
+     de cada escucha; no hace falta refrescarlo cada cinco segundos. */
+  async function pintarRecientes() {
+    const caja = $$('tablaEscRecientes');
+    if (!caja) return;
+    let r;
+    try {
+      r = await servicio.escuchasRecientes($$('escPeriodo')?.value || 7);
+    } catch (e) {
+      caja.innerHTML = `<div class="vacio">${seguro.texto(e.message)}</div>`;
+      $$('escRecN').textContent = '—';
+      return;
+    }
+
+    const n = r.escuchas.length;
+    $$('escRecN').textContent = n ? `${n}${n === 300 ? '+' : ''} escucha${n === 1 ? '' : 's'}` : '—';
+    if (!n) {
+      caja.innerHTML = '<div class="vacio">No hubo escuchas en este periodo.</div>';
+      return;
+    }
+
+    const cuando = (f) => {
+      const d = new Date(f);
+      const dos = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())} ${dos(d.getHours())}:${dos(d.getMinutes())}`;
+    };
+    const tono = { 'Escuchó': 'b', 'Susurró': 'a', 'Entró a la llamada': 'r' };
+
+    caja.innerHTML = `<div style="overflow-x:auto"><table class="tb">
+      <tr><th>Cuándo</th><th>Quién escuchó</th><th>Agente</th><th>Campaña</th><th>Forma</th></tr>
+      ${r.escuchas.map((x) => `<tr>
+        <td class="mono">${seguro.texto(cuando(x.fecha))}</td>
+        <td><b>${seguro.texto(x.supervisor)}</b></td>
+        <td>${seguro.texto(x.agente)}${x.extension ? ` <span class="hint">· ext. ${seguro.texto(x.extension)}</span>` : ''}</td>
+        <td>${seguro.celda(x.campana)}</td>
+        <td><span class="t ${tono[x.modo] || 'o'}">${seguro.texto(x.modo)}</span></td>
+      </tr>`).join('')}</table></div>`;
+  }
+
+  $$('escPeriodo')?.addEventListener('change', pintarRecientes);
 
   async function pintarEscucha() {
     let estado;
@@ -519,6 +562,7 @@ const administracion = (() => {
       $$('escDetalle').textContent =
         `${b.dataset.nombre} · extensión ${b.dataset.oir} · ${susurro ? 'susurrando' : 'escuchando'}`;
       aviso(susurro ? 'Estás hablando con el agente.' : 'Estás escuchando la llamada.', 'av-b');
+      pintarRecientes();              // la que acaba de empezar ya aparece abajo
     } catch (err) {
       aviso(err.message, 'av-a');
     } finally {
