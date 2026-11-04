@@ -125,7 +125,12 @@ const servicio = (() => {
       borrarToken();
       throw new Error('La sesión expiró. Vuelve a iniciar sesión.');
     }
-    if (!r.ok) throw new Error(datos?.error || 'Error ' + r.status);
+    if (!r.ok) {
+      const e = new Error(datos?.error || 'Error ' + r.status);
+      /* Algunas respuestas traen la lista de motivos (activar un flujo) */
+      if (Array.isArray(datos?.errores)) e.errores = datos.errores;
+      throw e;
+    }
     return datos;
   }
 
@@ -304,6 +309,8 @@ const servicio = (() => {
   const guardarFlujo = (id, datos) => api('PUT', `/flujos/${id}`, datos);
   const duplicarFlujo = (id) => api('POST', `/flujos/${id}/duplicar`);
   const eliminarFlujo = (id) => api('DELETE', `/flujos/${id}`);
+  const activarFlujo = (id) => api('POST', `/flujos/${id}/activar`);
+  const desactivarFlujo = (id) => api('POST', `/flujos/${id}/desactivar`);
 
   /** Por qué troncal sale cada campaña. */
   const listarRutas = () => api('GET', '/troncales/rutas');
@@ -719,6 +726,7 @@ const servicio = (() => {
     listarTroncales, listarTroncalesPropias, crearTroncal, guardarTroncal,
     eliminarTroncal, estadoTroncal, listarRutas, guardarRuta,
     listarFlujos, leerFlujo, crearFlujo, guardarFlujo, duplicarFlujo, eliminarFlujo,
+    activarFlujo, desactivarFlujo,
     leerTipificador, guardarTipificador,
     reglasClave, leerPolitica, guardarPolitica, cuentasBloqueadas, desbloquearCuenta, desactivarInactivos,
     listarBases, leerBase, crearBase, guardarBase, eliminarBase, cambiarEstadoBase,

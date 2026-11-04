@@ -6,8 +6,8 @@
    izquierda) y una o varias salidas (a la derecha); una flecha va de
    una salida a la entrada de otro bloque.
 
-   Fase 1: dibujar, configurar, revisar y guardar. Asterisk todavía no
-   usa estos flujos; eso llega en la fase 2.
+   Un flujo se activa con su botón: la central lo empieza a usar, y se
+   prueba marcando *77 más su número desde cualquier extensión.
 
    Cómo se maneja:
      · Arrastrar un bloque desde la paleta, o hacer clic en él.
@@ -142,7 +142,8 @@ const flujos = (() => {
         <td class="mono">${esc(f.bloques)}</td>
         <td>${f.pendientes ? `<span class="t a">${esc(f.pendientes)} pendiente${f.pendientes === 1 ? '' : 's'}</span>`
                             : '<span class="t g">Completo</span>'}</td>
-        <td><span class="t ${f.estado === 'activo' ? 'g' : 'o'}">${f.estado === 'activo' ? 'Activo' : 'Borrador'}</span></td>
+        <td><span class="t ${f.estado === 'activo' ? 'g' : 'o'}">${f.estado === 'activo' ? 'Activo' : 'Borrador'}</span>
+          ${f.estado === 'activo' ? `<div class="hint">Probar: marca <b class="mono">*77${esc(f.id)}</b></div>` : ''}</td>
         <td>${esc(cuando(f))}${f.modificado_por ? `<div class="hint">${esc(f.modificado_por)}</div>` : ''}</td>
         <td style="white-space:nowrap">
           <button class="b b-teal b-sm" data-abrir="${esc(f.id)}">Abrir</button>
@@ -208,6 +209,7 @@ const flujos = (() => {
     sel = null;
     cambios = false;
     $f('flNombre').value = actual.nombre;
+    pintarActivo();
     $f('flLista').style.display = 'none';
     $f('flEditor').style.display = '';
     pintarPaleta();
@@ -215,6 +217,56 @@ const flujos = (() => {
     centrar();
     pintarPropiedades();
   }
+
+  /* ═══════════ ACTIVO O BORRADOR ═══════════ */
+  function pintarActivo() {
+    const activo = actual?.estado === 'activo';
+    $f('flActivo').style.display = activo ? '' : 'none';
+    $f('flActivo').className = 't g';
+    $f('flActivo').innerHTML = activo ? `Activo · probar con <b class="mono">*77${esc(actual.id)}</b>` : '';
+    $f('btnFlActivar').textContent = activo ? 'Desactivar' : 'Activar';
+  }
+
+  $f('btnFlActivar')?.addEventListener('click', async () => {
+    const btn = $f('btnFlActivar');
+    const activo = actual.estado === 'activo';
+
+    if (!activo) {
+      revisar();
+      if (problemas.length) {
+        aviso(`Antes de activarlo, resuelve los ${problemas.length} pendientes marcados en rojo.`, 'av-a');
+        return;
+      }
+      if (cambios) {
+        aviso('Primero guarda los cambios: se activa lo que está guardado.', 'av-a');
+        return;
+      }
+      if (!confirm(`¿Activar "${actual.nombre}"?\n\nLa central lo empieza a usar. Lo podrás probar marcando *77${actual.id} desde cualquier extensión.`)) return;
+    } else if (!confirm(`¿Desactivar "${actual.nombre}"?\n\nDeja de atender llamadas.`)) {
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = activo ? 'Desactivando…' : 'Activando…';
+    try {
+      if (activo) {
+        await servicio.desactivarFlujo(actual.id);
+        actual.estado = 'borrador';
+        aviso('Flujo desactivado.', 'av-b');
+      } else {
+        const r = await servicio.activarFlujo(actual.id);
+        actual.estado = 'activo';
+        aviso(`Flujo activo. Para probarlo, marca ${r.prueba} desde tu extensión.`, 'av-b');
+      }
+    } catch (e) {
+      /* El servidor revisa contra lo que existe de verdad: un audio
+         borrado, una campaña sin cola. Esos motivos se muestran. */
+      aviso(e.message + (e.errores?.length ? ': ' + e.errores.join(' · ') : ''), 'av-a');
+    } finally {
+      btn.disabled = false;
+      pintarActivo();
+    }
+  });
 
   function marcarCambio() {
     cambios = true;
