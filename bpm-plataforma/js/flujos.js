@@ -375,7 +375,7 @@ const flujos = (() => {
     switch (n.tipo) {
       case 'inicio': return 'La llamada entra aquí';
       case 'reproducir': return c.audio ? `🔊 ${audio(c.audio)}` : 'Elige un audio';
-      case 'menu': return c.audio ? `🔊 ${audio(c.audio)}` : 'Elige el audio del menú';
+      case 'menu': return c.audio ? `🔊 ${audio(c.audio)}` : 'Sin audio: espera la tecla';
       case 'campana': {
         const cp = recursos.campanas.find((x) => String(x.id) === String(c.campana_id));
         return cp ? cp.nombre : 'Elige una campaña';
@@ -653,7 +653,10 @@ const flujos = (() => {
     if (n.tipo === 'menu') {
       campos = `
         <div class="f"><label>Audio del menú</label><select class="fi" data-c="audio">${opcionesAudio(c.audio)}</select>
-          <div class="hint">El que dice las opciones: "marque 1 para…".</div></div>
+          <div class="hint">Lo recomendado: el mensaje completo aquí —"Bienvenido. Para ventas marque 1…"—,
+            porque el cliente puede marcar mientras suena. Si lo dejas vacío, el menú espera la tecla en
+            silencio, por si el mensaje sonó antes; pero lo que se marque durante un bloque Reproducir
+            no se escucha.</div></div>
         <div class="f"><label>Opciones</label>
           ${(c.opciones || []).map((o, i) => `
             <div class="fl-op">
@@ -810,7 +813,6 @@ const flujos = (() => {
       /* Lo que cada bloque necesita tener configurado */
       if (n.tipo === 'reproducir' && !c.audio) P.push({ nodo: n.id, texto: 'Reproducir: falta elegir el audio' });
       if (n.tipo === 'menu') {
-        if (!c.audio) P.push({ nodo: n.id, texto: 'Menú: falta el audio con las opciones' });
         if (!(c.opciones || []).length) P.push({ nodo: n.id, texto: 'Menú: no tiene opciones' });
       }
       if (n.tipo === 'campana' && !recursos.campanas.some((x) => String(x.id) === String(c.campana_id))) {
