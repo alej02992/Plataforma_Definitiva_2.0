@@ -176,7 +176,11 @@ const blaster = (() => {
     $b('blHasta').value = '19:00';
     marcarDias('L,M,X,J,V');
     $b('blReintentos').value = '2';
-    llenarAudios();
+    $b('blTransferir').checked = false;
+    $b('blTransTecla').value = '2';
+    $b('blTransEspera').value = '60';
+    $b('blTransferirBox').style.display = 'none';
+    llenarAudios().then(() => llenarAudioOcupado(''));
     elegirTipo('texto');
     elegirRespTipo('tecla');
     alternarRespuesta();
@@ -234,6 +238,11 @@ const blaster = (() => {
     $b('blHasta').value = (actual.hora_fin || '19:00').slice(0, 5);
     marcarDias(actual.dias || 'L,M,X,J,V');
     $b('blReintentos').value = actual.reintentos ?? 2;
+    $b('blTransferir').checked = !!actual.transferir_tecla;
+    $b('blTransTecla').value = actual.transferir_tecla || '2';
+    $b('blTransEspera').value = actual.transferir_espera || 60;
+    $b('blTransferirBox').style.display = actual.transferir_tecla ? '' : 'none';
+    llenarAudioOcupado(actual.transferir_audio || '');
 
     elegirTipo(actual.tipo);
     elegirRespTipo(actual.respuesta_tipo || 'tecla');
@@ -387,6 +396,25 @@ const blaster = (() => {
     hora_fin: $b('blHasta').value + ':00',
     dias: diasMarcados(),
     reintentos: Number($b('blReintentos').value) || 0,
+    transferir_tecla: $b('blTransferir').checked ? $b('blTransTecla').value : null,
+    transferir_espera: Number($b('blTransEspera').value) || 60,
+    transferir_audio: $b('blTransferir').checked ? ($b('blTransAudio').value || null) : null,
+  });
+
+  /* El aviso de ocupados se elige entre los mismos audios del blaster */
+  function llenarAudioOcupado(elegido) {
+    const sel = $b('blTransAudio');
+    if (!sel) return;
+    const opciones = [...$b('blAudio').options].filter((o) => o.value)
+      .map((o) => `<option value="${seguro.texto(o.value)}"${o.value === elegido ? ' selected' : ''}>${seguro.texto(o.textContent)}</option>`);
+    sel.innerHTML = '<option value="">Sin aviso</option>' + opciones.join('');
+    if (elegido && sel.value !== elegido) {
+      sel.insertAdjacentHTML('beforeend', `<option value="${seguro.texto(elegido)}" selected>${seguro.texto(elegido)}</option>`);
+    }
+  }
+
+  $b('blTransferir')?.addEventListener('change', () => {
+    $b('blTransferirBox').style.display = $b('blTransferir').checked ? '' : 'none';
   });
 
   $b('btnBlGuardar').addEventListener('click', async () => {
@@ -643,16 +671,21 @@ const blaster = (() => {
        Leyendo la columna se detecta un nombre mal escrito en el Excel
        sin tener que escuchar los audios uno a uno. */
     const conVariables = actual.tipo === 'variables';
+    const conAsesor = !!actual.transferir_tecla || filas.some((x) => x.transferencia);
 
     $b('blRevision').innerHTML = `<div style="overflow-x:auto"><table class="tb">
       <tr><th>Número</th><th>Nombre</th><th>Estado</th><th>Intentos</th><th>Motivo</th>${
+        conAsesor ? '<th>Asesor</th>' : ''}${
         conVariables ? '<th>Lo que escucha</th><th>Audio</th>' : ''}</tr>
       ${filas.slice(0, 200).map((f) => `<tr>
         <td class="mono">${seguro.texto(f.numero)}</td>
         <td>${seguro.celda(f.nombre)}</td>
         <td><span class="t ${tono(f)}">${seguro.texto(estadoDe(f))}</span></td>
         <td class="mono">${seguro.texto(f.intentos ?? 0)}</td>
-        <td>${seguro.celda(f.ultimo_motivo)}</td>${conVariables ? `
+        <td>${seguro.celda(f.ultimo_motivo)}</td>${conAsesor ? `
+        <td>${f.transferencia === 'atendida' ? `<span class="t g">Lo atendió ${seguro.texto(f.asesor || 'un asesor')}</span>`
+          : f.transferencia === 'sin_agente' ? '<span class="t r">Pidió, sin asesor libre</span>'
+          : f.transferencia === 'pedida' ? '<span class="t b">Pidió un asesor</span>' : '<span class="hint">—</span>'}</td>` : ''}${conVariables ? `
         <td class="bl-msj">${seguro.celda(f.mensaje)}</td>
         <td class="bl-oir-celda">${f.tieneAudio
           ? `<button class="b b-gh b-sm" data-oir="${seguro.texto(f.id)}">▶ Escuchar</button>`

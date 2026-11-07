@@ -872,6 +872,28 @@
                 Con audio grabado, dilo en la grabación: "digite su cédula y presione numeral".</div></div>
           </div>
 
+          <!-- ── Transferir a un asesor ── -->
+          <label class="chk" style="margin-top:4px"><input type="checkbox" id="blTransferir">
+            <b>Transferir a un asesor</b> si el cliente marca una tecla</label>
+          <div id="blTransferirBox" style="display:none;margin:6px 0 12px">
+            <div class="r2">
+              <div class="f"><label>Tecla para hablar con un asesor</label>
+                <select class="fi mono" id="blTransTecla">
+                  <option>0</option><option>1</option><option selected>2</option><option>3</option><option>4</option>
+                  <option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>*</option>
+                </select></div>
+              <div class="f"><label>Espera máxima por un asesor</label>
+                <input class="fi mono" id="blTransEspera" type="number" min="15" max="600" value="60">
+                <div class="hint">Segundos. Después escucha el aviso de ocupados y se cuelga.</div></div>
+            </div>
+            <div class="f"><label>Aviso si no hay asesores</label>
+              <select class="fi" id="blTransAudio"><option value="">Sin aviso</option></select>
+              <div class="hint">Por ejemplo: "En este momento nuestros asesores están ocupados, lo llamaremos pronto".</div></div>
+            <div class="hint">La llamada pasa a un asesor de la campaña del blaster, que ve el número del cliente y
+              de qué blaster viene. <b>Dilo en el mensaje</b>: "si desea hablar con un asesor, marque 2".
+              Mientras haya transferencia, el blaster marca según los asesores libres: sin ninguno, espera.</div>
+          </div>
+
           <!-- ── Cuándo llamar ── -->
           <div class="r2">
             <div class="f"><label>Desde</label><input class="fi" id="blDesde" type="time" value="08:00"></div>
@@ -1466,6 +1488,25 @@
             <p class="c-sub">El recorrido que hace una llamada al entrar: la bienvenida, el menú de
               opciones y a qué campaña o persona va según lo que marque el cliente.</p>
             <div id="flTabla"><div class="vacio">Cargando…</div></div>
+          </div>
+
+          <!-- Qué flujo atiende cada número que entra (DID) -->
+          <div class="c">
+            <div class="c-h"><h2>Números de entrada</h2><span class="t o" id="flNumN">—</span></div>
+            <p class="c-sub">Qué flujo contesta cuando un cliente marca cada número de la empresa. El número
+              se reconoce con o sin 57, +57 o 0057. Solo se pueden elegir flujos activos.</p>
+            <div id="flNumeros"><div class="vacio">Cargando…</div></div>
+            <div class="rej rej-3" style="grid-template-columns:200px 1fr 1fr auto;align-items:end;margin-top:12px" id="flNumNuevo">
+              <div class="f"><label>Número</label><input class="fi mono" id="flNumNumero" placeholder="6012345678" inputmode="tel"></div>
+              <div class="f"><label>Descripción</label><input class="fi" id="flNumDesc" maxlength="120" placeholder="Línea principal"></div>
+              <div class="f"><label>Lo atiende</label><select class="fi" id="flNumFlujo"></select></div>
+              <div class="f"><button class="b b-teal" id="btnFlNumAgregar">Agregar</button></div>
+            </div>
+            <div class="f" style="max-width:420px;margin-top:6px">
+              <label>Si entra una llamada a un número sin asignar</label>
+              <select class="fi" id="flNumDefecto"></select>
+              <div class="hint">Por ejemplo, el flujo de la línea principal. Si eliges colgar, el número queda en el registro de la central.</div>
+            </div>
           </div>
         </div>
 
