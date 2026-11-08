@@ -180,6 +180,9 @@ const blaster = (() => {
     $b('blTransTecla').value = '2';
     $b('blTransEspera').value = '60';
     $b('blTransferirBox').style.display = 'none';
+    $b('blTransAviso').checked = false;
+    $b('blTransTexto').value = '';
+    pintarAviso();
     llenarAudios().then(() => llenarAudioOcupado(''));
     elegirTipo('texto');
     elegirRespTipo('tecla');
@@ -242,7 +245,10 @@ const blaster = (() => {
     $b('blTransTecla').value = actual.transferir_tecla || '2';
     $b('blTransEspera').value = actual.transferir_espera || 60;
     $b('blTransferirBox').style.display = actual.transferir_tecla ? '' : 'none';
-    llenarAudioOcupado(actual.transferir_audio || '');
+    $b('blTransAviso').checked = !!(actual.transferir_texto || actual.transferir_audio);
+    $b('blTransTexto').value = actual.transferir_texto || '';
+    llenarAudioOcupado(actual.tipo === 'audio' ? (actual.transferir_audio || '') : '');
+    pintarAviso();
 
     elegirTipo(actual.tipo);
     elegirRespTipo(actual.respuesta_tipo || 'tecla');
@@ -276,6 +282,7 @@ const blaster = (() => {
        de texto sobra, y se reemplaza por una explicación. */
     $b('blRespGuionBox').style.display = t === 'audio' ? 'none' : '';
     $b('blRespAudioHint').style.display = t === 'audio' ? '' : 'none';
+    if (typeof pintarAviso === 'function') pintarAviso();
 
     revisarVariables();
   }
@@ -398,8 +405,22 @@ const blaster = (() => {
     reintentos: Number($b('blReintentos').value) || 0,
     transferir_tecla: $b('blTransferir').checked ? $b('blTransTecla').value : null,
     transferir_espera: Number($b('blTransEspera').value) || 60,
-    transferir_audio: $b('blTransferir').checked ? ($b('blTransAudio').value || null) : null,
+    /* Con audio grabado se manda el audio elegido; con texto a voz, el texto
+       escrito. Sin la casilla de aviso, ninguno de los dos. */
+    transferir_audio: $b('blTransferir').checked && $b('blTransAviso').checked && tipo === 'audio'
+      ? ($b('blTransAudio').value || null) : null,
+    transferir_texto: $b('blTransferir').checked && $b('blTransAviso').checked && tipo !== 'audio'
+      ? ($b('blTransTexto').value.trim() || null) : null,
   });
+
+  /** El aviso: audio o texto según el tipo de blaster, y solo si se pide. */
+  function pintarAviso() {
+    if (!$b('blTransAvisoBox')) return;
+    $b('blTransAvisoBox').style.display = $b('blTransAviso').checked ? '' : 'none';
+    $b('blTransAudioBox').style.display = tipo === 'audio' ? '' : 'none';
+    $b('blTransTextoBox').style.display = tipo === 'audio' ? 'none' : '';
+  }
+  $b('blTransAviso')?.addEventListener('change', pintarAviso);
 
   /* El aviso de ocupados se elige entre los mismos audios del blaster */
   function llenarAudioOcupado(elegido) {
@@ -407,7 +428,7 @@ const blaster = (() => {
     if (!sel) return;
     const opciones = [...$b('blAudio').options].filter((o) => o.value)
       .map((o) => `<option value="${seguro.texto(o.value)}"${o.value === elegido ? ' selected' : ''}>${seguro.texto(o.textContent)}</option>`);
-    sel.innerHTML = '<option value="">Sin aviso</option>' + opciones.join('');
+    sel.innerHTML = '<option value="">Elige un audio…</option>' + opciones.join('');
     if (elegido && sel.value !== elegido) {
       sel.insertAdjacentHTML('beforeend', `<option value="${seguro.texto(elegido)}" selected>${seguro.texto(elegido)}</option>`);
     }

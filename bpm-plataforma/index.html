@@ -886,9 +886,20 @@
                 <input class="fi mono" id="blTransEspera" type="number" min="15" max="600" value="60">
                 <div class="hint">Segundos. Después escucha el aviso de ocupados y se cuelga.</div></div>
             </div>
-            <div class="f"><label>Aviso si no hay asesores</label>
-              <select class="fi" id="blTransAudio"><option value="">Sin aviso</option></select>
-              <div class="hint">Por ejemplo: "En este momento nuestros asesores están ocupados, lo llamaremos pronto".</div></div>
+            <label class="chk"><input type="checkbox" id="blTransAviso"> Dar un aviso si no hay asesores</label>
+            <div id="blTransAvisoBox" style="display:none;margin:4px 0 10px">
+              <!-- Audio grabado: se elige un audio -->
+              <div class="f" id="blTransAudioBox"><label>Audio del aviso</label>
+                <select class="fi" id="blTransAudio"><option value="">Elige un audio…</option></select></div>
+              <!-- Texto a voz: se escribe, y se genera con la voz del blaster -->
+              <div class="f" id="blTransTextoBox"><label>Lo que escucha el cliente</label>
+                <textarea class="fi" id="blTransTexto" maxlength="300" rows="2"
+                  placeholder="En este momento nuestros asesores están ocupados. Lo llamaremos pronto."></textarea>
+                <div class="hint">Se genera con la misma voz del mensaje al aprobar el blaster. Si el texto no
+                  cambia, no se vuelve a cobrar.</div></div>
+            </div>
+            <div class="hint" style="margin-bottom:8px">Sin aviso, si no alcanza un asesor la llamada solo se cuelga,
+              y no se genera ni se cobra ningún audio.</div>
             <div class="hint">La llamada pasa a un asesor de la campaña del blaster, que ve el número del cliente y
               de qué blaster viene. <b>Dilo en el mensaje</b>: "si desea hablar con un asesor, marque 2".
               Mientras haya transferencia, el blaster marca según los asesores libres: sin ninguno, espera.</div>
