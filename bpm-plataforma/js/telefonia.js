@@ -130,6 +130,14 @@ const telefonia = (() => {
       logBuilder: constructorTraza,
       sessionDescriptionHandlerFactoryOptions: {
         peerConnectionConfiguration: { iceServers: parsearIce(cfg.ice) },
+        /* Al contestar, el navegador busca por dónde conectar el audio, y
+           espera también al servidor externo (STUN) de la configuración.
+           Si la red de la empresa no deja salir ese tráfico, la espera
+           llegaba a 5 segundos en CADA llamada: el agente creía que el
+           botón no funcionaba y pulsaba varias veces. Dentro de la red,
+           el camino directo se encuentra en milisegundos, así que basta
+           con esperar medio segundo. */
+        iceGatheringTimeout: Number(cfg.iceEspera) || 500,
       },
       delegate: { onInvite: entrante },
     });
@@ -350,8 +358,10 @@ const telefonia = (() => {
       return;
     }
 
+    const t0 = Date.now();
     try {
       await est.session.accept({ sessionDescriptionHandlerOptions: medios() });
+      traza(`Contestada en ${Date.now() - t0} ms`, 'ok');
     } catch (e) {
       /* El aviso de error viaja como TEXTO, como el resto de este
          archivo. Mandarlo como objeto hacía que en pantalla apareciera

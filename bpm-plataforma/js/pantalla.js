@@ -318,7 +318,7 @@ function pintarSoftphone(d) {
     if ($('chkFlash').checked) $('flash').classList.add('on');
     mostrarFicha(d.numero);
     marcarEstadoAgente('En llamada');
-    if ($('chkAuto').checked) setTimeout(() => telefonia.contestar(), 700);
+    if ($('chkAuto').checked) setTimeout(contestarConAviso, 700);
   }
 
   if (e === 'marcando') {
@@ -830,7 +830,7 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
 
   if (e.key === 'Enter') {
-    if (telefonia.estado === 'timbrando') { telefonia.contestar(); e.preventDefault(); return; }
+    if (telefonia.estado === 'timbrando') { contestarConAviso(); e.preventDefault(); return; }
     if (telefonia.estado === 'reposo' && (e.target === $('dest') || !enCampo)) {
       telefonia.llamar($('dest').value); e.preventDefault(); return;
     }
@@ -847,9 +847,25 @@ document.addEventListener('keydown', (e) => {
 
 /* ═══════════ BOTONES DE LLAMADA ═══════════ */
 $('btnCall').addEventListener('click', () => telefonia.llamar($('dest').value));
-/* Contestar da señal de que está trabajando: sin eso, si tarda un
-   segundo el agente cree que no funcionó y vuelve a pulsar. */
-$('btnAnswer').addEventListener('click', () => telefonia.contestar());
+/* Contestar da señal de que está trabajando: el botón cambia a
+   "Contestando…", se bloquea y el timbre se calla al instante. Sin eso,
+   si tarda un momento el agente cree que no funcionó y vuelve a pulsar.
+   Lo usan el botón, la tecla rápida y "contestar automáticamente". */
+async function contestarConAviso() {
+  const b = $('btnAnswer');
+  if (b.disabled) return;
+  b.disabled = true;
+  b.textContent = 'Contestando…';
+  tonos.parar();
+  $('flash').classList.remove('on');
+  try {
+    await telefonia.contestar();
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Contestar';
+  }
+}
+$('btnAnswer').addEventListener('click', contestarConAviso);
 
 $('btnReject').addEventListener('click', () => telefonia.rechazar());
 $('btnHangup').addEventListener('click', () => telefonia.colgar());
